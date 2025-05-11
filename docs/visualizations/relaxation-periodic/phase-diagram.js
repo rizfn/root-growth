@@ -347,15 +347,34 @@ d3.select("#spacingSlider").on("input", function () {
     d3.select("#spacingValue").text(spacing);
     runAllSimulations();
     drawHeatmap();
-    // Try to keep the same cell selected
-    drawRoot(selectedResult);
+    // Redraw root for the same cell, but with updated parameters
+    if (selectedResult) {
+        // Find the updated result with the same parameters
+        const updated = allResults.find(
+            d => d.elongationZoneLength === selectedResult.elongationZoneLength &&
+                 d.downwardReturn === selectedResult.downwardReturn
+        );
+        if (updated) {
+            selectedResult = updated;
+            drawRoot(selectedResult);
+        }
+    }
 });
 d3.select("#radiusSlider").on("input", function () {
     radius = +this.value;
     d3.select("#radiusValue").text(radius);
     runAllSimulations();
     drawHeatmap();
-    drawRoot(selectedResult);
+    if (selectedResult) {
+        const updated = allResults.find(
+            d => d.elongationZoneLength === selectedResult.elongationZoneLength &&
+                 d.downwardReturn === selectedResult.downwardReturn
+        );
+        if (updated) {
+            selectedResult = updated;
+            drawRoot(selectedResult);
+        }
+    }
 });
 
 // --- 10. Update selected cell on heatmap click ---
