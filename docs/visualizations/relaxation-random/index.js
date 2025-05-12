@@ -1,0 +1,334 @@
+// 1. Removed unnecessary body clearing line
+
+// 2. Create controls container: only as wide as needed, not full width
+const controls = d3.select("body")
+    .append("div")
+    .attr("id", "controls")
+    .style("position", "fixed")
+    .style("top", "10px")
+    .style("left", "10px")
+    .style("z-index", "2")
+    .style("background", "rgba(255,255,255,0.95)")
+    .style("padding", "10px 20px 10px 10px")
+    .style("border-radius", "8px")
+    .style("box-shadow", "0 2px 8px rgba(0,0,0,0.08)")
+    .style("user-select", "auto")
+    .style("display", "inline-block");
+
+// Fractal Dimension slider
+controls.append("label")
+    .text("Fractal Dimension: ")
+    .append("input")
+    .attr("type", "range")
+    .attr("min", 1.5)
+    .attr("max", 3.5)
+    .attr("step", 0.01)
+    .attr("value", 2.5)
+    .attr("id", "fractalDimensionSlider")
+    .style("vertical-align", "middle")
+    .style("margin-right", "20px");
+
+// Density slider (now means area fraction)
+controls.append("label")
+    .text(" Density: ")
+    .append("input")
+    .attr("type", "range")
+    .attr("min", 0.01)
+    .attr("max", 1)
+    .attr("step", 0.01)
+    .attr("value", 0.15)
+    .attr("id", "densitySlider")
+    .style("vertical-align", "middle")
+    .style("margin-right", "20px");
+
+// Add Root Speed slider
+controls.append("label")
+    .text(" Root Speed: ")
+    .append("input")
+    .attr("type", "range")
+    .attr("min", 0.5)
+    .attr("max", 8)
+    .attr("step", 0.1)
+    .attr("value", 2)
+    .attr("id", "rootSpeedSlider")
+    .style("vertical-align", "middle")
+    .style("margin-right", "20px");
+
+// Add Memory Length slider
+controls.append("label")
+    .text(" Memory Length: ")
+    .append("input")
+    .attr("type", "range")
+    .attr("min", 1)
+    .attr("max", 100)
+    .attr("step", 1)
+    .attr("value", 50)
+    .attr("id", "memoryLengthSlider")
+    .style("vertical-align", "middle")
+    .style("margin-right", "20px");
+
+// Add Downward Return Rate slider
+controls.append("label")
+    .text(" Downward Return: ")
+    .append("input")
+    .attr("type", "range")
+    .attr("min", 0.01)
+    .attr("max", 0.5)
+    .attr("step", 0.01)
+    .attr("value", 0.2)
+    .attr("id", "downwardReturnSlider")
+    .style("vertical-align", "middle");
+
+// Add Reset Button
+controls.append("button")
+    .attr("id", "resetBtn")
+    .text("Reset Root")
+    .style("margin-left", "20px")
+    .on("click", reset);
+
+// Create SVG (instead of canvas)
+const svg = d3.select("body")
+    .append("svg")
+    .attr("id", "mainSVG")
+    .style("display", "block")
+    .style("position", "absolute")
+    .style("top", 0)
+    .style("left", 0)
+    .style("z-index", "0")
+    .attr("width", window.innerWidth)
+    .attr("height", window.innerHeight);
+
+// Redraw on resize or slider input
+d3.select(window).on("resize", resizeAndDraw);
+d3.selectAll("#fractalDimensionSlider, #densitySlider, #rootSpeedSlider, #memoryLengthSlider, #downwardReturnSlider").on("input", draw);
+
+function resizeAndDraw() {
+    svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
+    draw();
+}
+
+let circles = [];
+let rootLine = [];
+let rootDirection = { x: 0, y: 1 }; // Downward
+
+function reset() {
+    // Regenerate circles and reset the root line to the top center
+    circles = generateRandomCircles();
+    rootLine = [{ x: window.innerWidth / 2, y: 0 }];
+    rootDirection = { x: 0, y: 1 };
+    draw();
+}
+
+function samplePowerLawRadius(d, rMin, rMax) {
+    // Inverse transform sampling for P(r) ~ r^-(d+1)
+    // CDF: F(r) = 1 - (r/rMax)^{-d} / (rMin/rMax)^{-d}
+    // For N(r ≤ R) ~ R^{-d}, PDF ~ d*R^{-(d+1)}
+    // We want to sample r in [rMin, rMax]
+    const u = Math.random();
+    const pow = -1 / d;
+    // Invert: r = [u * (rMax^{-d} - rMin^{-d}) + rMin^{-d}]^{-1/d}
+    const rMinPow = Math.pow(rMin, -d);
+    const rMaxPow = Math.pow(rMax, -d);
+    const r = Math.pow(u * (rMaxPow - rMinPow) + rMinPow, pow);
+    return r;
+}
+
+function generateRandomCircles() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const fractalDimension = +d3.select("#fractalDimensionSlider").property("value");
+    const density = +d3.select("#densitySlider").property("value");
+    const rMin = 1, rMax = Math.min(width, height);
+    const maxArea = width * height * density;
+
+    // 1. Generate a list of radii from the power law, stop when total area exceeds density
+    let radii = [];
+    let totalArea = 0;
+    while (true) {
+        const r = samplePowerLawRadius(fractalDimension, rMin, rMax);
+        if (totalArea + Math.PI * r * r > maxArea) break;
+        radii.push(r);
+        totalArea += Math.PI * r * r;
+        // Safety: avoid infinite loop
+        if (radii.length > 10000) break;
+    }
+
+    // 2. Sort radii descending (largest first)
+    radii.sort((a, b) => b - a);
+
+    // 3. Place circles in order, with a few tries for each
+    let circles = [];
+    for (let i = 0; i < radii.length; ++i) {
+        const r = radii[i];
+        let placed = false;
+        for (let attempt = 0; attempt < 100; ++attempt) {
+            const cx = r + Math.random() * (width - 2 * r);
+            const cy = r + 40 + Math.random() * (height - 2 * r - 40);
+            let overlaps = false;
+            for (let c of circles) {
+                const dx = cx - c.cx;
+                const dy = cy - c.cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < r + c.r + 2) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (!overlaps) {
+                circles.push({ cx, cy, r });
+                placed = true;
+                break;
+            }
+        }
+        // If not placed after 10 tries, skip this radius
+    }
+    return circles;
+}
+
+
+function draw() {
+    const controlsRect = document.getElementById("controls").getBoundingClientRect();
+    const controlsBottom = controlsRect.bottom;
+
+    // Only draw circles, do not regenerate them here!
+    // circles = generateRandomCircles(); // <-- REMOVE THIS LINE
+
+    // Data join for circles
+    const sel = svg.selectAll("circle").data(circles);
+
+    sel.join(
+        enter => enter.append("circle")
+            .attr("cx", d => d.cx)
+            .attr("cy", d => d.cy)
+            .attr("r", d => d.r)
+            .attr("fill", "#666666"),
+        update => update
+            .attr("cx", d => d.cx)
+            .attr("cy", d => d.cy)
+            .attr("r", d => d.r)
+            .attr("fill", "#666666"),
+        exit => exit.remove()
+    );
+
+    // Draw root line
+    svg.selectAll("polyline.root").data([rootLine])
+        .join("polyline")
+        .attr("class", "root")
+        .attr("fill", "none")
+        .attr("stroke", "#901A1E")
+        .attr("stroke-width", 4)
+        .attr("points", d => d.map(p => `${p.x},${p.y}`).join(" "));
+
+    // If rootLine is empty, reset
+    if (rootLine.length === 0) reset();
+}
+
+
+function getDirection() {
+    const memoryLength = +d3.select("#memoryLengthSlider").property("value");
+    if (rootLine.length < 2) return { x: 0, y: 1 };
+    const idx = Math.max(0, rootLine.length - memoryLength);
+    const from = rootLine[idx];
+    const to = rootLine[rootLine.length - 1];
+    let dx = to.x - from.x;
+    let dy = to.y - from.y;
+    let len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) return { x: 0, y: 1 };
+    return { x: dx / len, y: dy / len };
+}
+
+function smoothRoot() {
+    const memoryLength = +d3.select("#memoryLengthSlider").property("value");
+    if (rootLine.length < 3) return;
+    // Simple smoothing: moving average for last memoryLength points
+    for (let i = rootLine.length - memoryLength; i < rootLine.length - 1; i++) {
+        if (i <= 0 || i >= rootLine.length - 1) continue;
+        rootLine[i].x = (rootLine[i - 1].x + rootLine[i].x + rootLine[i + 1].x) / 3;
+        rootLine[i].y = (rootLine[i - 1].y + rootLine[i].y + rootLine[i + 1].y) / 3;
+    }
+}
+
+function growRoot() {
+    if (rootLine.length === 0) return;
+
+    const rootSpeed = +d3.select("#rootSpeedSlider").property("value");
+    const sliderDownwardReturn = +d3.select("#downwardReturnSlider").property("value");
+    const memoryLength = +d3.select("#memoryLengthSlider").property("value");
+
+    // Compute direction based on memory
+    let dir = getDirection();
+    // Add gravity bias
+    dir.x = dir.x * (1 - sliderDownwardReturn) + 0 * sliderDownwardReturn;
+    dir.y = dir.y * (1 - sliderDownwardReturn) + 1 * sliderDownwardReturn;
+    // Normalize
+    let len = Math.sqrt(dir.x * dir.x + dir.y * dir.y);
+    dir.x /= len;
+    dir.y /= len;
+
+    let last = rootLine[rootLine.length - 1];
+    let next = { x: last.x + dir.x * rootSpeed, y: last.y + dir.y * rootSpeed };
+
+    // Check for collision with any circle
+    let collided = false, collisionCircle = null;
+    for (let c of circles) {
+        let dx = next.x - c.cx;
+        let dy = next.y - c.cy;
+        let dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < c.r + 2) {
+            collided = true;
+            collisionCircle = c;
+            break;
+        }
+    }
+
+    if (collided && collisionCircle) {
+        // Move tip tangentially along the circle
+        let dx = last.x - collisionCircle.cx;
+        let dy = last.y - collisionCircle.cy;
+        let rlen = Math.sqrt(dx * dx + dy * dy);
+        dx /= rlen;
+        dy /= rlen;
+        // Tangent direction
+        let tangent = { x: -dy, y: dx };
+        // Choose tangent closest to intended direction
+        if (tangent.x * dir.x + tangent.y * dir.y < 0) {
+            tangent.x *= -1;
+            tangent.y *= -1;
+        }
+        next.x = last.x + tangent.x * rootSpeed;
+        next.y = last.y + tangent.y * rootSpeed;
+        // Project onto boundary
+        let ndx = next.x - collisionCircle.cx;
+        let ndy = next.y - collisionCircle.cy;
+        let nlen = Math.sqrt(ndx * ndx + ndy * ndy);
+        next.x = collisionCircle.cx + ndx / nlen * (collisionCircle.r + 2);
+        next.y = collisionCircle.cy + ndy / nlen * (collisionCircle.r + 2);
+    }
+
+    // Only add if within bounds
+    if (next.y < window.innerHeight) {
+        rootLine.push(next);
+        smoothRoot();
+    }
+    draw();
+    requestAnimationFrame(growRoot);
+}
+
+// --- Only regenerate circles and reset root when sliders for obstacles change ---
+d3.select("#fractalDimensionSlider").on("input", reset);
+d3.select("#densitySlider").on("input", reset);
+
+// --- For root-only parameters, just redraw ---
+d3.selectAll("#rootSpeedSlider, #memoryLengthSlider, #downwardReturnSlider").on("input", draw);
+
+// Redraw on resize
+d3.select(window).on("resize", function() {
+    svg.attr("width", window.innerWidth).attr("height", window.innerHeight);
+    draw();
+});
+
+// Initial setup
+circles = generateRandomCircles();
+reset();
+requestAnimationFrame(growRoot);
+

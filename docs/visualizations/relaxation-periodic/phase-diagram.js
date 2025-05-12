@@ -216,7 +216,6 @@ function getHeatmapSize() {
 }
 
 
-
 function drawHeatmap() {
     // Remove any previous SVG
     heatmapSvgContainer.selectAll("svg").remove();
@@ -240,9 +239,8 @@ function drawHeatmap() {
         .range([heatmapHeight - heatmapMargin.bottom, heatmapMargin.top])
         .padding(0.05);
 
-    const slopeExtent = d3.extent(allResults, d => d.slope);
     const colorScale = d3.scaleSequential(d3.interpolateRdBu)
-        .domain([slopeExtent[1], slopeExtent[0]]); // Blue = left, Red = right
+        .domain([0, 0.7]);
 
     svgHeatmap.selectAll("rect")
         .data(allResults)
@@ -251,7 +249,7 @@ function drawHeatmap() {
         .attr("y", d => yScale(d.downwardReturn))
         .attr("width", xScale.bandwidth())
         .attr("height", yScale.bandwidth())
-        .attr("fill", d => colorScale(d.slope))
+        .attr("fill", d => colorScale(Math.min(1, Math.abs(1/d.slope))))
         .attr("stroke", "#222")
         .attr("cursor", "pointer")
         .on("click", function (event, d) {
