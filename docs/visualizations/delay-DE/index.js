@@ -34,8 +34,8 @@ tauContainer.append("label")
     .append("input")
     .attr("type", "range")
     .attr("min", 0)
-    .attr("max", 100)
-    .attr("step", 5)
+    .attr("max", 50)
+    .attr("step", 1)
     .attr("value", 20)
     .attr("id", "tauSlider")
     .style("vertical-align", "middle");
@@ -57,13 +57,13 @@ kContainer.append("label")
     .attr("min", 0)
     .attr("max", 0.5)
     .attr("step", 0.01)
-    .attr("value", 0.1)
+    .attr("value", 0.08)
     .attr("id", "kSlider")
     .style("vertical-align", "middle");
 
 kContainer.append("span")
     .attr("id", "kValue")
-    .text("0.1");
+    .text("0.08");
 
 // Noise strength (eta) slider
 const etaContainer = controls.append("div")
@@ -107,6 +107,13 @@ dtContainer.append("span")
     .attr("id", "dtValue")
     .text("0.5");
 
+// Stability parameter display
+controls.append("div")
+    .attr("id", "stabilityParam")
+    .style("font-size", "13px")
+    .style("color", "#666")
+    .text("τ·k/(π/2) = 1.02");
+
 // Reset Button
 controls.append("button")
     .attr("id", "resetBtn")
@@ -126,11 +133,20 @@ const svg = d3.select("body")
     .attr("height", window.innerHeight);
 
 // Update value displays
+function updateStabilityParam() {
+    const tau = +d3.select("#tauSlider").property("value");
+    const k = +d3.select("#kSlider").property("value");
+    const x = (2 * tau * k) / Math.PI;
+    d3.select("#stabilityParam").text(`τ·k/(π/2) = ${x.toFixed(2)}`);
+}
+
 d3.select("#tauSlider").on("input", function() {
     d3.select("#tauValue").text(this.value);
+    updateStabilityParam();
 });
 d3.select("#kSlider").on("input", function() {
     d3.select("#kValue").text(this.value);
+    updateStabilityParam();
 });
 d3.select("#etaSlider").on("input", function() {
     d3.select("#etaValue").text(this.value);
@@ -138,6 +154,9 @@ d3.select("#etaSlider").on("input", function() {
 d3.select("#dtSlider").on("input", function() {
     d3.select("#dtValue").text(this.value);
 });
+
+// Initialize stability parameter display
+updateStabilityParam();
 
 // Redraw on resize
 d3.select(window).on("resize", resizeAndDraw);
