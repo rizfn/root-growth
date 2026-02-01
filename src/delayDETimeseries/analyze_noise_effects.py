@@ -229,6 +229,6 @@ if __name__ == '__main__':
     k = 0.32
     theta0 = 1.5708
     dt = 0.1
-    tmax = 100000
+    tmax = 10000
     
     analyze_timeseries(tau, k, theta0, dt, tmax)

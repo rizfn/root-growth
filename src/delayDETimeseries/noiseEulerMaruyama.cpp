@@ -146,6 +146,7 @@ int main(int argc, char *argv[])
     double theta0 = DEFAULT_THETA0;
     double dt = DEFAULT_DT;
     double t_max = DEFAULT_T_MAX;
+    int sim_no = 0;
 
     if (argc > 1)
         tau = std::stod(argv[1]);
@@ -159,13 +160,22 @@ int main(int argc, char *argv[])
         dt = std::stod(argv[5]);
     if (argc > 6)
         t_max = std::stod(argv[6]);
+    if (argc > 7)
+        sim_no = std::stoi(argv[7]);
 
     std::string exePath = argv[0];
     std::string exeDir = std::filesystem::path(exePath).parent_path().string();
+    
+    // Create folder for this parameter set
+    std::ostringstream folderStream;
+    folderStream << exeDir << "/outputs/SDDETimeseries/tau_" << tau
+                 << "_k_" << k << "_theta0_" << theta0
+                 << "_dt_" << dt << "_tmax_" << t_max;
+    std::string folderPath = folderStream.str();
+    
+    // Create file path within folder
     std::ostringstream filePathStream;
-    filePathStream << exeDir << "/outputs/SDDETimeseries/tau_" << tau
-                   << "_k_" << k << "_eta_" << eta << "_theta0_" << theta0
-                   << "_dt_" << dt << "_tmax_" << t_max << ".tsv";
+    filePathStream << folderPath << "/eta_" << eta << "_simNo_" << sim_no << ".tsv";
     std::string filePath = filePathStream.str();
 
     // Create directory if it doesn't exist
