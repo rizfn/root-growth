@@ -15,7 +15,7 @@ def compute_psd(time_series, dt):
     return frequencies, psd
 
 def compute_autocorrelation(time_series, max_lag=500):
-    """Compute normalized autocorrelation function"""
+    """Compute normalized autocorrelation function with unbiased normalization"""
     n = len(time_series)
     mean = np.mean(time_series)
     var = np.var(time_series)
@@ -26,7 +26,11 @@ def compute_autocorrelation(time_series, max_lag=500):
     time_series_normalized = time_series - mean
     autocorr = np.correlate(time_series_normalized, time_series_normalized, mode='full')
     autocorr = autocorr[n-1:n-1+max_lag]
-    autocorr = autocorr / (var * n)
+    
+    # Unbiased normalization: divide by number of overlapping points at each lag
+    # This prevents artificial decay due to fewer samples at large lags
+    for lag in range(len(autocorr)):
+        autocorr[lag] = autocorr[lag] / (var * (n - lag))
     
     return autocorr
 

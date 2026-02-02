@@ -70,14 +70,14 @@ def fit_damped_oscillation(lag_times, autocorr):
     except:
         return None
 
-def analyze_timeseries_ensemble(tau, k, theta0, dt, tmax):
+def analyze_timeseries_ensemble(k, gamma, theta0, omega0, dt, tmax):
     """Analyze multiple timeseries with different noise levels using ensemble averaging"""
     
     script_dir = Path(__file__).parent
     
     # Find the parameter folder
-    folder_pattern = f"tau_{tau}_k_{k}_theta0_{theta0}_dt_{dt}_tmax_{tmax}"
-    folder_path = script_dir / "outputs/SDDETimeseries" / folder_pattern
+    folder_pattern = f"k_{k}_gamma_{gamma}_theta0_{theta0}_omega0_{omega0}_dt_{dt}_tmax_{tmax}"
+    folder_path = script_dir / "outputs/SimpleOscillator" / folder_pattern
     
     if not folder_path.exists():
         print(f"Folder not found: {folder_path}")
@@ -109,7 +109,10 @@ def analyze_timeseries_ensemble(tau, k, theta0, dt, tmax):
     
     # Setup figure with subplots
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-    fig.suptitle(f'Ensemble Noise Analysis: τ={tau}, k={k}', fontsize=14, fontweight='bold')
+    if gamma == 0.0:
+        fig.suptitle(f'Ensemble Noise Analysis: Undamped Harmonic Oscillator, ω₀={k}', fontsize=14, fontweight='bold')
+    else:
+        fig.suptitle(f'Ensemble Noise Analysis: Damped Harmonic Oscillator, k={k}, γ={gamma}', fontsize=14, fontweight='bold')
     
     # Colors for different noise levels (including eta=0 if present)
     colors = plt.cm.viridis(np.linspace(0, 1, len(eta_values)))
@@ -297,7 +300,7 @@ def analyze_timeseries_ensemble(tau, k, theta0, dt, tmax):
     plt.tight_layout()
     
     # Save figure
-    output_file = output_dir / f"noise_analysis_ensemble_tau_{tau}_k_{k}.png"
+    output_file = output_dir / f"noise_analysis_ensemble_k_{k}_gamma_{gamma}.png"
     plt.savefig(output_file, dpi=200, bbox_inches='tight')
     print(f"\nAnalysis saved to: {output_file}")
     
@@ -305,10 +308,11 @@ def analyze_timeseries_ensemble(tau, k, theta0, dt, tmax):
 
 if __name__ == '__main__':
     # Parameters (should match the bash script)
-    tau = 100
-    k = 0.016
+    k = 0.5
+    gamma = 0
     theta0 = 1.5708
+    omega0 = 0
     dt = 0.1
     tmax = 1000
     
-    analyze_timeseries_ensemble(tau, k, theta0, dt, tmax)
+    analyze_timeseries_ensemble(k, gamma, theta0, omega0, dt, tmax)
