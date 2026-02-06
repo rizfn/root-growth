@@ -1,1 +1,2 @@
 docs/visualizations/* -linguist-documentation
+*.ipynb linguist-generated

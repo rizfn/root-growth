@@ -3,4 +3,5 @@
 !*/
 .vscode
 *outputs/
+data
 root-env
