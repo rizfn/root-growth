@@ -78,8 +78,8 @@ struct HistoryBuffer
     }
 };
 
-
-// Solve DDE using Euler-Maruyama method (better for stochastic DDEs)
+// Solve DDE using Heun's method (stochastic RK2 - strong order 1.0)
+// For additive noise SDDEs: RK2 for deterministic part, optimal noise treatment
 void solveDDE(std::ofstream &file, double tau, double k, double eta, double theta0, double dt, double t_max)
 {
     HistoryBuffer history;
@@ -98,17 +98,39 @@ void solveDDE(std::ofstream &file, double tau, double k, double eta, double thet
     
     for (int step = 0; step < n_steps; ++step)
     {
-        // Euler-Maruyama method for stochastic DDE
-        // dθ = -k·sin(θ(t-τ))·dt + η·dW
-        double theta_delayed = history.getDelayed(t, tau, theta0);
-        double deterministic = -k * std::sin(theta_delayed);
+        // Heun's method (stochastic RK2) for SDDE with additive noise
+        // Predictor-corrector approach for deterministic part
+        
+        // Generate noise term (same for predictor and corrector)
         double noise = eta * normal_dist(gen) * std::sqrt(dt);
         
-        // Update theta
-        theta = theta + deterministic * dt + noise;
-        t = t + dt;
+        // Predictor step: evaluate derivative at current delayed state
+        double theta_delayed = history.getDelayed(t, tau, theta0);
+        double k1 = -k * std::sin(theta_delayed);
         
-        // Store in history
+        // Predicted value at t+dt
+        double theta_pred = theta + k1 * dt + noise;
+        double t_next = t + dt;
+        
+        // Temporarily add predictor to history for delay interpolation
+        history.add(t_next, theta_pred);
+        
+        // Corrector step: evaluate derivative at predicted delayed state
+        double theta_delayed_pred = history.getDelayed(t_next, tau, theta0);
+        double k2 = -k * std::sin(theta_delayed_pred);
+        
+        // Remove temporary predictor from history
+        history.times.pop_back();
+        history.values.pop_back();
+        
+        // Heun's corrector: average of slopes
+        double deterministic = 0.5 * (k1 + k2);
+        
+        // Update theta with corrected deterministic term and noise
+        theta = theta + deterministic * dt + noise;
+        t = t_next;
+        
+        // Store corrected value in history
         history.add(t, theta);
         
         // Write to file
@@ -161,7 +183,7 @@ int main(int argc, char *argv[])
     
     // Create folder for this parameter set
     std::ostringstream folderStream;
-    folderStream << exeDir << "/outputs/SDDETimeseries/tau_" << tau
+    folderStream << exeDir << "/outputs/SDDETimeseries/long/tau_" << tau
                  << "_k_" << k << "_theta0_" << theta0
                  << "_dt_" << dt << "_tmax_" << t_max;
     std::string folderPath = folderStream.str();
