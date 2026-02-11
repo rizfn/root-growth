@@ -18,9 +18,9 @@ std::random_device rd;
 std::mt19937 gen(rd());
 std::normal_distribution<double> normal_dist(0.0, 1.0);
 
-// Linear DDE parameters: dθ/dt = -k·θ(t-τ) + η·ξ(t)
+// Saturating DDE parameters: dθ/dt = -k·θ(t-τ)/(1 + |θ(t-τ)|) + η·ξ(t)
 constexpr double DEFAULT_TAU = 20.0;           // Time lag
-constexpr double DEFAULT_K = 0.08;             // Linear restoring strength
+constexpr double DEFAULT_K = 0.08;             // Restoring strength
 constexpr double DEFAULT_ETA = 0.1;            // Noise strength
 constexpr double DEFAULT_THETA0 = 1.5708;      // Initial angle (π/2 radians = 90 degrees)
 constexpr double DEFAULT_DT = 0.1;             // Time step
@@ -78,7 +78,7 @@ struct HistoryBuffer
     }
 };
 
-// Solve linear DDE using Heun's method (stochastic RK2 - strong order 1.0)
+// Solve saturating DDE using Heun's method (stochastic RK2 - strong order 1.0)
 // For additive noise SDDEs: RK2 for deterministic part, optimal noise treatment
 void solveDDE(std::ofstream &file, double tau, double k, double eta, double theta0, double dt, double t_max)
 {
@@ -98,7 +98,7 @@ void solveDDE(std::ofstream &file, double tau, double k, double eta, double thet
     
     for (int step = 0; step < n_steps; ++step)
     {
-        // Heun's method (stochastic RK2) for linear SDDE with additive noise
+        // Heun's method (stochastic RK2) for saturating SDDE with additive noise
         // Predictor-corrector approach for deterministic part
         
         // Generate noise term (same for predictor and corrector)
@@ -106,7 +106,7 @@ void solveDDE(std::ofstream &file, double tau, double k, double eta, double thet
         
         // Predictor step: evaluate derivative at current delayed state
         double theta_delayed = history.getDelayed(t, tau, theta0);
-        double k1 = -k * theta_delayed;  // Linear term instead of sin
+        double k1 = -k * theta_delayed / (1.0 + std::abs(theta_delayed));  // Saturating term: θ/(1+|θ|)
         
         // Predicted value at t+dt
         double theta_pred = theta + k1 * dt + noise;
@@ -117,7 +117,7 @@ void solveDDE(std::ofstream &file, double tau, double k, double eta, double thet
         
         // Corrector step: evaluate derivative at predicted delayed state
         double theta_delayed_pred = history.getDelayed(t_next, tau, theta0);
-        double k2 = -k * theta_delayed_pred;  // Linear term instead of sin
+        double k2 = -k * theta_delayed_pred / (1.0 + std::abs(theta_delayed_pred));  // Saturating term
         
         // Remove temporary predictor from history
         history.times.pop_back();
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
     
     // Create folder for this parameter set
     std::ostringstream folderStream;
-    folderStream << exeDir << "/outputs/linearSDDETimeseries/tau_" << tau
+    folderStream << exeDir << "/outputs/saturatingSDDETimeseries/tau_" << tau
                  << "_k_" << k << "_theta0_" << theta0
                  << "_dt_" << dt << "_tmax_" << t_max;
     std::string folderPath = folderStream.str();
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
     file.close();
 
-    std::cout << "Linear SDDE solution complete. Results saved to: " << filePath << std::endl;
+    std::cout << "Saturating SDDE solution complete. Results saved to: " << filePath << std::endl;
 
     return 0;
 }

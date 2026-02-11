@@ -67,7 +67,7 @@ def plot_autocorr_with_envelope(tau, k, theta0, dt, tmax):
     
     # Find the parameter folder
     folder_pattern = f"tau_{tau}_k_{k}_theta0_{theta0}_dt_{dt}_tmax_{tmax}"
-    folder_path = script_dir / "outputs/linearSDDETimeseries" / folder_pattern
+    folder_path = script_dir / "outputs/saturatingSDDETimeseries" / folder_pattern
     
     if not folder_path.exists():
         print(f"Folder not found: {folder_path}")
@@ -90,7 +90,7 @@ def plot_autocorr_with_envelope(tau, k, theta0, dt, tmax):
     print(f"Plotting {len(eta_values)} eta values: {eta_values}")
     
     # Create output directory
-    output_dir = script_dir / "plots/autocorrelation_damping_linear"
+    output_dir = script_dir / "plots/autocorrelation_damping_saturating"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Determine grid size based on number of plots
@@ -108,7 +108,7 @@ def plot_autocorr_with_envelope(tau, k, theta0, dt, tmax):
     fig, axes = plt.subplots(nrows, ncols, figsize=(5*ncols, 5*nrows))
     axes = axes.flatten()
     
-    fig.suptitle(f'Autocorrelation Damping: Linear Delay DE, τ={tau}, k={k}', 
+    fig.suptitle(f'Autocorrelation Damping: Saturating Delay DE (θ/(1+|θ|)), τ={tau}, k={k}', 
                  fontsize=14, fontweight='bold')
     
     # Process each selected eta value
@@ -216,7 +216,7 @@ def plot_autocorr_with_envelope(tau, k, theta0, dt, tmax):
     plt.tight_layout()
     
     # Save figure
-    output_file = output_dir / f"autocorr_damping_linear_tau_{tau}_k_{k}.png"
+    output_file = output_dir / f"autocorr_damping_saturating_tau_{tau}_k_{k}.png"
     plt.savefig(output_file, dpi=200, bbox_inches='tight')
     print(f"\nPlot saved to: {output_file}")
     plt.close()

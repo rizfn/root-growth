@@ -19,7 +19,7 @@ if [ $N_PROCS -lt 1 ]; then
     N_PROCS=1
 fi
 
-echo "Running linear SDDE simulations with $N_PROCS parallel jobs..."
+echo "Running saturating SDDE simulations with $N_PROCS parallel jobs..."
 echo "Testing ${#NOISE_VALUES[@]} noise values with $N_SIMS simulations each"
 echo "Total simulations: $((${#NOISE_VALUES[@]} * N_SIMS))"
 
@@ -27,7 +27,7 @@ echo "Total simulations: $((${#NOISE_VALUES[@]} * N_SIMS))"
 run_simulation() {
     local eta=$1
     local sim_no=$2
-    ./linearNoiseHeun $TAU $K $eta $THETA0 $DT $TMAX $sim_no > /dev/null 2>&1
+    ./saturatingNonLinNoiseHeun $TAU $K $eta $THETA0 $DT $TMAX $sim_no > /dev/null 2>&1
 }
 
 export -f run_simulation
@@ -66,5 +66,5 @@ else
 fi
 
 echo ""
-echo "All linear SDDE simulations complete!"
-echo "Results saved in outputs/linearSDDETimeseries/"
+echo "All saturating SDDE simulations complete!"
+echo "Results saved in outputs/saturatingSDDETimeseries/"
