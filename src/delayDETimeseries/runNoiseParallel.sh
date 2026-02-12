@@ -1,19 +1,19 @@
 #!/bin/bash
 
 # Fixed parameters
-TAU=5.0
-K=0.32
+TAU=50.0
+K=0.08
 THETA0=1.5708
 DT=0.1
-TMAX=1000.0
+TMAX=4000.0
 
 # Number of simulations per noise value for ensemble averaging
 N_SIMS=20
 
 # Array of noise values to test (logarithmic spacing)
 # From 10^-4 to 10^-1, plus eta=0 for reference
-NOISE_VALUES=(0.0 0.0001 0.0002 0.0003 0.0005 0.0007 0.001 0.002 0.003 0.005 0.007 0.01 0.02 0.03 0.05 0.07 0.1)
-# NOISE_VALUES=(0.0 0.0001 0.0003 0.001 0.003 0.01 0.03 0.1)
+# NOISE_VALUES=(0.0 0.0001 0.0002 0.0003 0.0005 0.0007 0.001 0.002 0.003 0.005 0.007 0.01 0.02 0.03 0.05 0.07 0.1)
+NOISE_VALUES=(0.0 0.0001 0.0003 0.001 0.003 0.01 0.03 0.1)
 
 # Get number of processors and keep 2 free
 N_PROCS=$(($(nproc) - 2))

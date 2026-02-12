@@ -5,7 +5,8 @@ import os
 def main(tau, k, eta, theta0, dt, tmax):
     # Load data
     script_dir = os.path.dirname(__file__)
-    data_file = f"{script_dir}/outputs/SDDETimeseries/tau_{tau}_k_{k}_eta_{eta}_theta0_{theta0}_dt_{dt}_tmax_{tmax}.tsv"
+    # data_file = f"{script_dir}/outputs/SDDETimeseries/tau_{tau}_k_{k}_eta_{eta}_theta0_{theta0}_dt_{dt}_tmax_{tmax}.tsv"
+    data_file = f"{script_dir}/outputs/SDDETimeseries/long/tau_{tau}_k_{k}_theta0_{theta0}_dt_{dt}_tmax_{tmax}/eta_{eta}_simNo_10.tsv"
     data = np.loadtxt(data_file, skiprows=1)
     
     # Plot
@@ -14,6 +15,7 @@ def main(tau, k, eta, theta0, dt, tmax):
     plt.xlabel('Time')
     plt.ylabel('θ (radians)')
     plt.title(f'SDDE: τ={tau}, k={k}, η={eta}, θ₀={theta0:.4f}')
+    plt.xlim(3*tmax/4, tmax)
     plt.grid(True, alpha=0.3)
     
     # Save
@@ -26,9 +28,9 @@ def main(tau, k, eta, theta0, dt, tmax):
 
 if __name__ == '__main__':
     tau = 20
-    k = 0.08
+    k = 0.32
     eta = 0
     theta0 = 1.5708
     dt = 0.1
-    tmax = 1000
+    tmax = 4000
     main(tau, k, eta, theta0, dt, tmax)
