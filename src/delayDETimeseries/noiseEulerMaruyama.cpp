@@ -20,11 +20,11 @@ std::normal_distribution<double> normal_dist(0.0, 1.0);
 
 // DDE parameters: dθ/dt = -k·sin(θ(t-τ)) + η·ξ(t)
 constexpr double DEFAULT_TAU = 20.0;           // Time lag
-constexpr double DEFAULT_K = 0.08;             // Gravitropic strength
-constexpr double DEFAULT_ETA = 0.1;            // Noise strength
+constexpr double DEFAULT_K = 0.19;             // Gravitropic strength
+constexpr double DEFAULT_ETA = 0.0;            // Noise strength
 constexpr double DEFAULT_THETA0 = 1.5708;      // Initial angle (π/2 radians = 90 degrees)
-constexpr double DEFAULT_DT = 0.1;             // Time step
-constexpr double DEFAULT_T_MAX = 1000.0;       // Total simulation time
+constexpr double DEFAULT_DT = 0.01;             // Time step
+constexpr double DEFAULT_T_MAX = 4000.0;       // Total simulation time
 
 // History buffer to store past theta values
 struct HistoryBuffer
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     
     // Create folder for this parameter set
     std::ostringstream folderStream;
-    folderStream << exeDir << "/outputs/SDDETimeseries/tau_" << tau
+    folderStream << exeDir << "/outputs/SDDETimeseries/long/tau_" << tau
                  << "_k_" << k << "_theta0_" << theta0
                  << "_dt_" << dt << "_tmax_" << t_max;
     std::string folderPath = folderStream.str();
