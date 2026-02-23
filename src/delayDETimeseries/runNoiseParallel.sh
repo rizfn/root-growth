@@ -4,7 +4,8 @@
 TAU=50.0
 K=0.08
 THETA0=1.5708
-DT=0.1
+DT=0.01
+RECORD_DT=0.1
 TMAX=4000.0
 
 # Number of simulations per noise value for ensemble averaging
@@ -29,12 +30,11 @@ echo "Total simulations: $((${#NOISE_VALUES[@]} * N_SIMS))"
 run_simulation() {
     local eta=$1
     local sim_no=$2
-    ./noiseEulerMaruyama $TAU $K $eta $THETA0 $DT $TMAX $sim_no > /dev/null 2>&1
-    # ./noiseHeun $TAU $K $eta $THETA0 $DT $TMAX $sim_no > /dev/null 2>&1
+    ./noiseHeun $TAU $K $eta $THETA0 $DT $TMAX $sim_no $RECORD_DT > /dev/null 2>&1
 }
 
 export -f run_simulation
-export TAU K THETA0 DT TMAX
+export TAU K THETA0 DT TMAX RECORD_DT
 
 # Run simulations in parallel using GNU parallel if available
 if command -v parallel &> /dev/null; then

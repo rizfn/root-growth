@@ -23,7 +23,8 @@ constexpr double DEFAULT_TAU = 20.0;           // Time lag
 constexpr double DEFAULT_K = 0.08;             // Gravitropic strength
 constexpr double DEFAULT_ETA = 0.1;            // Noise strength
 constexpr double DEFAULT_THETA0 = 1.5708;      // Initial angle (π/2 radians = 90 degrees)
-constexpr double DEFAULT_DT = 0.1;             // Time step
+constexpr double DEFAULT_DT = 0.01;            // Time step
+constexpr double DEFAULT_RECORD_DT = 0.1;      // Recording interval (write to file every record_dt)
 constexpr double DEFAULT_T_MAX = 1000.0;       // Total simulation time
 
 // History buffer to store past theta values
@@ -80,12 +81,15 @@ struct HistoryBuffer
 
 // Solve DDE using Heun's method (stochastic RK2 - strong order 1.0)
 // For additive noise SDDEs: RK2 for deterministic part, optimal noise treatment
-void solveDDE(std::ofstream &file, double tau, double k, double eta, double theta0, double dt, double t_max)
+void solveDDE(std::ofstream &file, double tau, double k, double eta, double theta0, double dt, double t_max, double record_dt)
 {
     HistoryBuffer history;
     
     double t = 0.0;
     double theta = theta0;
+    
+    // Calculate recording interval in steps
+    int record_steps = std::max(1, static_cast<int>(std::round(record_dt / dt)));
     
     // Write header
     file << "time\ttheta\n";
@@ -133,8 +137,11 @@ void solveDDE(std::ofstream &file, double tau, double k, double eta, double thet
         // Store corrected value in history
         history.add(t, theta);
         
-        // Write to file
-        file << t << "\t" << theta << "\n";
+        // Write to file at recording interval
+        if ((step + 1) % record_steps == 0)
+        {
+            file << t << "\t" << theta << "\n";
+        }
         
         // Prune old history periodically
         if (step % 100 == 0)
@@ -162,6 +169,7 @@ int main(int argc, char *argv[])
     double dt = DEFAULT_DT;
     double t_max = DEFAULT_T_MAX;
     int sim_no = 0;
+    double record_dt = DEFAULT_RECORD_DT;
 
     if (argc > 1)
         tau = std::stod(argv[1]);
@@ -177,6 +185,8 @@ int main(int argc, char *argv[])
         t_max = std::stod(argv[6]);
     if (argc > 7)
         sim_no = std::stoi(argv[7]);
+    if (argc > 8)
+        record_dt = std::stod(argv[8]);
 
     std::string exePath = argv[0];
     std::string exeDir = std::filesystem::path(exePath).parent_path().string();
@@ -185,7 +195,7 @@ int main(int argc, char *argv[])
     std::ostringstream folderStream;
     folderStream << exeDir << "/outputs/SDDETimeseries/long/tau_" << tau
                  << "_k_" << k << "_theta0_" << theta0
-                 << "_dt_" << dt << "_tmax_" << t_max;
+                 << "_dt_" << record_dt << "_tmax_" << t_max;
     std::string folderPath = folderStream.str();
     
     // Create file path within folder
@@ -199,7 +209,7 @@ int main(int argc, char *argv[])
     std::ofstream file;
     file.open(filePath);
 
-    solveDDE(file, tau, k, eta, theta0, dt, t_max);
+    solveDDE(file, tau, k, eta, theta0, dt, t_max, record_dt);
 
     file.close();
 
