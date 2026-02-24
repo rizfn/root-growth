@@ -25,7 +25,7 @@ def read_image_grayscale(path):
     return im
 
 
-def segment_image(im, min_threshold=55, max_threshold=75, top_n=10, max_x_extent_ratio=0.75, min_yx_extent_ratio=0.3, min_x_extent=20):
+def segment_image(im, min_threshold=55, max_threshold=75, top_n=10, max_x_extent_ratio=0.75, min_yx_extent_ratio=0.3, min_x_extent=20, hole_fill_size=25):
     # mask within thresholds (handles grayscale)
     mask = (im >= min_threshold) & (im <= max_threshold)
 
@@ -58,7 +58,7 @@ def segment_image(im, min_threshold=55, max_threshold=75, top_n=10, max_x_extent
 
 def segment_image_slow(im, min_threshold=55, max_threshold=75, top_n=10,
                        max_x_extent_ratio=0.75, min_yx_extent_ratio=0.3,
-                       min_x_extent=20, frame_frac=0.1, frame_thresh=0.75):
+                       min_x_extent=20, frame_frac=0.1, frame_thresh=0.75, hole_fill_size=25):
     """Slower, more conservative segmentation.
 
     This version applies the same intensity and extent filters as
@@ -109,6 +109,33 @@ def segment_image_slow(im, min_threshold=55, max_threshold=75, top_n=10,
     if labels_to_remove2:
         for lbl in labels_to_remove2:
             labeled[labeled == lbl] = 0
+
+    # Fill small background holes completely enclosed by a single segment
+    if hole_fill_size and hole_fill_size > 0:
+        h, w = im.shape[:2]
+        background_mask = (labeled == 0)
+        bg_labeled = measure.label(background_mask, connectivity=1) # 4-connectivity for background
+        for bg_region in measure.regionprops(bg_labeled):
+            if bg_region.area > hole_fill_size:
+                continue
+            coords = bg_region.coords
+            # skip if touching image border (not enclosed)
+            if np.any(coords[:,0] == 0) or np.any(coords[:,0] == h-1) or np.any(coords[:,1] == 0) or np.any(coords[:,1] == w-1):
+                continue
+            neighbor_labels = []
+            for (r, c) in coords:
+                r0 = max(0, r-1); r1 = min(h-1, r+1)
+                c0 = max(0, c-1); c1 = min(w-1, c+1)
+                neigh = labeled[r0:r1+1, c0:c1+1].ravel()
+                nonzero = neigh[neigh > 0]
+                if nonzero.size > 0:
+                    neighbor_labels.append(nonzero)
+            if not neighbor_labels:
+                continue
+            neighbor_labels = np.concatenate(neighbor_labels)
+            labels, counts = np.unique(neighbor_labels, return_counts=True)
+            chosen = labels[np.argmax(counts)]
+            labeled[coords[:,0], coords[:,1]] = chosen
 
     # keep only the top_n largest remaining components
     regions = measure.regionprops(labeled)
@@ -175,18 +202,14 @@ def run_batch(input_dir, pattern, mapping, out_dir, min_threshold, max_threshold
         save_relabeled_png(relabeled, out_path, top_n)
 
 
-def run_batch_simple(min_threshold=55, max_threshold=75, default_top_n=10):
-    """Run batch segmentation using local hardcoded defaults (no globals).
-
-    - `input_dir`, `pattern`, `out_dir`, `mapping` can be overridden by passing values.
-    - If `mapping` is not provided, paste your filename->top_n dict in the `mapping` variable below.
-
-    Call example: `run_batch_simple(55, 75, 10)`
-    """
-    # local hardcoded defaults
+def main():
+    # defaults that used to live in `run_batch_simple`
     input_dir = Path('data/raw')
     pattern = '*.bmp'
     out_dir = Path('data/segmented')
+    min_threshold = 55
+    max_threshold = 75
+    default_top_n = 10
 
     root_number_data = {
         '003-Ag-0-s-250612-002.bmp': 3,
@@ -256,10 +279,6 @@ def run_batch_simple(min_threshold=55, max_threshold=75, default_top_n=10):
         }
 
     run_batch(input_dir, pattern, root_number_data, out_dir, min_threshold, max_threshold, default_top_n)
-
-
-def main():
-    run_batch_simple()
 
 
 if __name__ == '__main__':
