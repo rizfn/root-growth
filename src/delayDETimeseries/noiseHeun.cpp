@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
     
     // Create folder for this parameter set
     std::ostringstream folderStream;
-    folderStream << exeDir << "/outputs/SDDETimeseries/long/tau_" << tau
+    folderStream << exeDir << "/outputs/SDDETimeseries/tau_k_raster/tau_" << tau
                  << "_k_" << k << "_theta0_" << theta0
                  << "_dt_" << record_dt << "_tmax_" << t_max;
     std::string folderPath = folderStream.str();
