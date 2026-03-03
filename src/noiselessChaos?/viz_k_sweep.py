@@ -14,11 +14,11 @@ def load_timeseries(folder):
 
 
 def main():
-    tau = 25
+    tau = 20
     eta = 0.0
     theta0 = 1.5708
     dt = 0.1          # record_dt
-    tmax = 4000
+    tmax = 8000
     sim_no = 0
 
     script_dir = os.path.dirname(os.path.abspath(__file__))

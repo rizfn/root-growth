@@ -5,7 +5,7 @@
 # eta = 0 (deterministic), one simulation per k value
 
 # Fixed parameters
-TAU=25.0
+TAU=20.0
 ETA=0.0
 THETA0=1.5708
 DT=0.01
@@ -19,7 +19,7 @@ PYTHON="$SCRIPT_DIR/../../root-env/bin/python"
 # Build log-spaced k array using numpy
 read -r -a K_VALUES <<< "$("$PYTHON" -c "
 import numpy as np
-vals = np.geomspace(0.2, 0.23, 20)
+vals = np.geomspace(0.15, 0.25, 100)
 print(' '.join(f'{v:.6f}' for v in vals))
 ")"
 
