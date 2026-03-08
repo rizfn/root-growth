@@ -116,3 +116,67 @@ $$R_1 = \frac{2k\tau}{\pi} \underbrace{\frac{1}{\pi}\int_0^{2\pi}\sin\!\big(R_1\
 $$R_3 = \frac{2k\tau}{3\pi} \underbrace{\frac{1}{\pi}\int_0^{2\pi}\sin\!\big(R_1\sin\phi - R_3\sin 3\phi\big)\sin 3\phi\,d\phi}_{I_3}$$
 
 When $R_3=0$, $I_1 = 2J_1(R_1)$ exactly (from the Jacobi-Anger expansion), recovering the original equation.
+
+### Time Period Estimation (also incomplete)
+
+Assume the amplitude is slightly above $\pi$, i.e. $R = \pi + \epsilon$ with $\epsilon \ll 1$.
+
+#### Step 1: Width of the $\pi$-crossing near the peak
+
+Near the global maximum, approximate the trajectory as a downward parabola:
+
+$$\theta(t) \approx R - \tfrac{1}{2}R\omega^2(t - t_\text{peak})^2$$
+
+The two instants at which $\theta = \pi$ satisfy $\epsilon = \tfrac{1}{2}R\omega^2 \Delta t_1^2$, giving
+
+$$\Delta t_1 = \sqrt{\frac{2\epsilon}{R\omega^2}}$$
+
+With $\omega = \pi/(2\tau)$ and $R \approx \pi$:
+
+$$\Delta t_1 \approx \sqrt{\frac{8\epsilon\tau^2}{\pi^3}}$$
+
+The two crossings are at $t_\text{peak} - \Delta t_1$ and $t_\text{peak} + \Delta t_1$.
+
+#### Step 2: Two extra extrema, separated by $2\Delta t_1$
+
+Each $\pi$-crossing of $\theta$ plants an extremum of $\theta$ exactly $\tau$ later (since $\dot\theta = -k\sin(\theta(t-\tau)) = 0$ whenever $\theta(t-\tau) = \pi$). The two crossings therefore generate:
+
+- a local **minimum** at $t_m = t_\text{peak} - \Delta t_1 + \tau$,
+- a local **maximum** at $t_M = t_\text{peak} + \Delta t_1 + \tau$,
+
+separated by $t_M - t_m = 2\Delta t_1$.
+
+The minimum sits just below $\pi$ (at $\pi - \epsilon$) and the maximum just above it (at $\pi + \epsilon$), since both are seeded by $\pi$-crossings of the same excess $\epsilon$.
+
+#### Step 3: Matching the two parabolas to find $\delta t$
+
+Approximate each extra extremum as a parabola with curvature $\alpha = \tfrac{1}{2}R\omega^2$:
+
+$$\theta_m(t) = (\pi - \epsilon) + \alpha(t - t_m)^2 \qquad \text{(upward, centred at } t_m\text{)}$$
+$$\theta_M(t) = (\pi + \epsilon) - \alpha(t - t_M)^2 \qquad \text{(downward, centred at } t_M\text{)}$$
+
+The trajectory enters the bump from the left of the minimum and exits to the right of the maximum. By symmetry, the entry and exit occur at the same value of $\theta$. Setting $\theta_m(t_m - \delta t) = \theta_M(t_M + \delta t)$:
+
+$$(\pi - \epsilon) + \alpha\,\delta t^2 = (\pi + \epsilon) - \alpha\,\delta t^2$$
+
+$$2\alpha\,\delta t^2 = 2\epsilon \implies \delta t = \sqrt{\frac{\epsilon}{\alpha}} = \sqrt{\frac{2\epsilon}{R\omega^2}} = \Delta t_1$$
+
+So the bump occupies a time interval from $t_m - \delta t$ to $t_M + \delta t$, a total width of
+
+$$2\Delta t_1 + 2\,\delta t = 4\Delta t_1$$
+
+#### Step 4: Full period
+
+On the first LC ($R < \pi$) there are no $\pi$-crossings and $T_1 = 4\tau$. On the second LC there is one such bump per half-period (one near $\theta \approx +R$ and a symmetric one near $\theta \approx -R$). Each bump adds $4\Delta t_1$ to the full period (the interval from $t_m - \delta t$ to $t_M + \delta t$), and there are two such bumps:
+
+$$T_2 \approx 4\tau + 2 \times 4\Delta t_1 \div 2$$
+
+The factor of $\div 2$ is because each bump is shared equally between two consecutive half-periods (half the bump falls in one half-period, half in the next). This simplifies to
+
+$$T_2 \approx 4\tau + 4\Delta t_1 = 4\tau + 4\sqrt{\frac{8\epsilon\tau^2}{\pi^3}}$$
+
+or equivalently
+
+$$\frac{T_2 - 4\tau}{\tau} = 4\sqrt{\frac{8\epsilon}{\pi^3}}$$
+
+It's too small, so needs more work...
