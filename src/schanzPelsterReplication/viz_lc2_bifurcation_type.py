@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 TAU = 25.0
-DT  = 0.01
+DT  = 0.001
 N_BUF = round(TAU / DT) + 1
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
