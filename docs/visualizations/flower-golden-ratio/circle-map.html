@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circle Map Explorer</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8f7f3;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-2: #9a3412;
+      --grid: #d6d3d1;
+      --rule: #e7e5e4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+      gap: 24px;
+      max-width: 1520px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    .panel {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      position: sticky;
+      top: 20px;
+      align-self: start;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+      letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .equation {
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      padding: 0 0 10px;
+      border-bottom: 1px solid var(--rule);
+      overflow-x: auto;
+      white-space: nowrap;
+      color: var(--muted);
+    }
+
+    .control-row {
+      display: grid;
+      gap: 4px;
+    }
+
+    .control-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .control-head label {
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .value {
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      color: var(--accent-2);
+      font-size: 0.82rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    button {
+      border: 1px solid var(--rule);
+      background: transparent;
+      color: var(--ink);
+      border-radius: 0;
+      padding: 8px 10px;
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .stat {
+      padding-top: 10px;
+      border-top: 1px solid var(--rule);
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .stat strong {
+      color: var(--ink);
+    }
+
+    .plots {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 24px 20px;
+    }
+
+    .plot-card {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      min-height: 290px;
+    }
+
+    .plot-title {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    svg {
+      width: 100%;
+      height: 270px;
+      display: block;
+      background: transparent;
+    }
+
+    .axis path,
+    .axis line {
+      stroke: #6f7584;
+    }
+
+    .grid line {
+      stroke: var(--grid);
+      stroke-opacity: 0.8;
+      shape-rendering: crispEdges;
+    }
+
+    .grid path {
+      stroke-width: 0;
+    }
+
+    .hint {
+      font-size: 0.77rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .controls {
+        position: static;
+      }
+
+      .plots {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="panel controls">
+      <h1>Circle Map Explorer</h1>
+      <p class="subtitle">Interactive phase locking and golden mean diagnostics</p>
+      <div class="equation">theta_{n+1} = theta_n + Omega - (K / 2pi) sin(2pi theta_n) (mod 1)</div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="kRange">K (nonlinearity)</label>
+          <span class="value" id="kValue"></span>
+        </div>
+        <input id="kRange" type="range" min="0" max="1.4" step="0.001" value="1" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="omegaRange">Omega</label>
+          <span class="value" id="omegaValue"></span>
+        </div>
+        <input id="omegaRange" type="range" min="0" max="1" step="0.00001" value="0.60666" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="theta0Range">theta_0</label>
+          <span class="value" id="theta0Value"></span>
+        </div>
+        <input id="theta0Range" type="range" min="0" max="1" step="0.0001" value="0.1234" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="iterRange">Iterations</label>
+          <span class="value" id="iterValue"></span>
+        </div>
+        <input id="iterRange" type="range" min="200" max="12000" step="100" value="3000" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="transientRange">Transient cut</label>
+          <span class="value" id="transientValue"></span>
+        </div>
+        <input id="transientRange" type="range" min="0" max="8000" step="50" value="700" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="scanSpanRange">Omega scan span</label>
+          <span class="value" id="scanSpanValue"></span>
+        </div>
+        <input id="scanSpanRange" type="range" min="0.02" max="0.6" step="0.01" value="0.24" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="scanPointsRange">Scan points</label>
+          <span class="value" id="scanPointsValue"></span>
+        </div>
+        <input id="scanPointsRange" type="range" min="80" max="700" step="10" value="250" />
+      </div>
+
+      <div class="control-row">
+        <div class="control-head">
+          <label for="paramGridRange">Parameter grid</label>
+          <span class="value" id="paramGridValue"></span>
+        </div>
+        <input id="paramGridRange" type="range" min="30" max="150" step="2" value="54" />
+      </div>
+
+      <div class="button-row">
+        <button id="presetGolden">Preset: critical golden</button>
+        <button id="randomIC">Random IC</button>
+        <button id="recomputeMaps">Recompute parameter maps</button>
+      </div>
+
+      <div class="stat" id="statsBox"></div>
+      <div class="hint">Drag parameters and inspect locking plateaus in rotation-number scan.</div>
+    </aside>
+
+    <main class="plots">
+      <section class="panel plot-card">
+        <h2 class="plot-title">Map graph and cobweb</h2>
+        <svg id="plotMap"></svg>
+      </section>
+
+      <section class="panel plot-card">
+        <h2 class="plot-title">Time series theta_n</h2>
+        <svg id="plotTime"></svg>
+      </section>
+
+      <section class="panel plot-card">
+        <h2 class="plot-title">Return map (theta_n, theta_{n+1})</h2>
+        <svg id="plotReturn"></svg>
+      </section>
+
+      <section class="panel plot-card">
+        <h2 class="plot-title">Rotation number vs Omega</h2>
+        <svg id="plotScan"></svg>
+      </section>
+
+      <section class="panel plot-card">
+        <h2 class="plot-title">Arnold tongues in (Omega, K)</h2>
+        <svg id="plotTongues"></svg>
+      </section>
+
+      <section class="panel plot-card">
+        <h2 class="plot-title">Chaos map (largest Lyapunov exponent)</h2>
+        <svg id="plotChaos"></svg>
+      </section>
+    </main>
+  </div>
+
+  <script src="circle-map.js"></script>
+</body>
+</html>
