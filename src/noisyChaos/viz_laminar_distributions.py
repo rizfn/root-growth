@@ -4,6 +4,7 @@ import os
 import re
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import numpy as np
 import pandas as pd
 
@@ -172,12 +173,22 @@ def heatmap_from_stats(stats: pd.DataFrame, value_col: str, title: str, out_path
         return np.exp(np.r_[lv[0] - d[0] / 2, lv[:-1] + d / 2, lv[-1] + d[-1] / 2])
 
     fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+    
+    # Compute log normalization from valid data
+    valid_data = grid[~np.isnan(grid)]
+    if len(valid_data) > 0:
+        vmin, vmax = valid_data.min(), valid_data.max()
+        norm = LogNorm(vmin=vmin, vmax=vmax)
+    else:
+        norm = None
+    
     m = ax.pcolormesh(
         k_edges(ks),
         eta_edges(etas),
         np.ma.masked_invalid(grid),
         cmap="magma",
         shading="auto",
+        norm=norm,
     )
     ax.set_xlabel("k")
     ax.set_ylabel("eta")

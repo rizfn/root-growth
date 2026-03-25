@@ -104,13 +104,6 @@ def plot_lyapunov_value_heatmap(agg_df: pd.DataFrame, out_path: str):
     cb = fig.colorbar(m, ax=ax)
     cb.set_label("lambda")
 
-    # Lambda = 0 contour where available.
-    finite_mask = np.isfinite(lambda_grid)
-    if finite_mask.sum() > 3:
-        Xc, Yc = np.meshgrid(ks, etas)
-        z = np.where(finite_mask, lambda_grid, np.nan)
-        ax.contour(Xc, Yc, z, levels=[0.0], colors="black", linewidths=1.0)
-
     fig.savefig(out_path, dpi=200)
     plt.close(fig)
 
