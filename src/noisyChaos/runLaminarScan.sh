@@ -24,7 +24,7 @@ N_ETA=31
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PYTHON="$SCRIPT_DIR/../../root-env/bin/python"
-EXEC="$SCRIPT_DIR/sdde_laminar"
+EXEC="$SCRIPT_DIR/sddeLaminar"
 
 print_progress() {
     local completed=$1
@@ -43,7 +43,7 @@ fi
 
 echo "Recompiling sdde_laminar..."
 g++ -fdiagnostics-color=always -std=c++17 -O2 \
-    -o "$EXEC" "$SCRIPT_DIR/sdde_laminar.cpp"
+    -o "$EXEC" "$SCRIPT_DIR/sddeLaminar.cpp"
 echo "Compilation done."
 
 read -r -a K_VALUES <<< "$($PYTHON -c "

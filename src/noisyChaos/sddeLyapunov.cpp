@@ -29,7 +29,7 @@ constexpr double DEFAULT_ETA = 1e-4;
 constexpr double DEFAULT_THETA0 = 1.5708;
 constexpr double DEFAULT_DT = 0.01;
 constexpr double DEFAULT_T_WARMUP = 500.0;
-constexpr double DEFAULT_T_LYAP = 10.0;   // 1000 steps at dt=0.01
+constexpr double DEFAULT_T_LYAP = 10.0;
 constexpr double DEFAULT_RENORM_DT = 1.0;
 constexpr double DEFAULT_DELTA0 = 1e-8;
 constexpr unsigned int DEFAULT_SEED = 42;

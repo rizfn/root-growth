@@ -46,7 +46,10 @@ def forward_smooth(signal: np.ndarray, dt: float, tau: float) -> np.ndarray:
 
 
 def expected_scaling_from_anchor(anchor: float, lam: float, time: np.ndarray, t0: float) -> np.ndarray:
-    return anchor * np.exp(lam * (time - t0))
+    with np.errstate(over="ignore", invalid="ignore"):
+        pred = anchor * np.exp(lam * (time - t0))
+    pred[~np.isfinite(pred)] = np.nan
+    return pred
 
 
 def make_overlay_plot(
@@ -56,6 +59,9 @@ def make_overlay_plot(
     slug: str,
     out_dir: str,
 ):
+    plot_min = 1e-16
+    plot_max = 1e16
+
     time = trace_df["time"].to_numpy(dtype=float)
     sep = trace_df["separation"].to_numpy(dtype=float)
     tau = float(summary_row["tau"])
@@ -82,9 +88,30 @@ def make_overlay_plot(
     slope = float(np.polyfit(x_fit, y_fit, 1)[0])
 
     fig, ax = plt.subplots(figsize=(8.4, 4.8), constrained_layout=True)
-    ax.semilogy(time, sep, lw=0.9, alpha=0.35, label="|delta theta|")
-    ax.semilogy(t_avg, avg_sep, lw=1.8, alpha=0.95, label="forward avg over 4*tau")
-    ax.semilogy(t_avg, pred, lw=2.0, ls="--", label=f"pred: exp(lambda t), lambda={lambda_est:.4g}")
+
+    sep_mask = (sep >= plot_min) & (sep <= plot_max)
+    avg_mask = (avg_sep >= plot_min) & (avg_sep <= plot_max)
+    pred_finite = np.isfinite(pred) & (pred > 0.0)
+    pred_mask = pred_finite & (pred >= plot_min) & (pred <= plot_max)
+
+    if np.any(sep_mask):
+        ax.semilogy(time[sep_mask], sep[sep_mask], lw=0.9, alpha=0.35, label="|delta theta|")
+    if np.any(avg_mask):
+        ax.semilogy(t_avg[avg_mask], avg_sep[avg_mask], lw=1.8, alpha=0.95, label="forward avg over 4*tau")
+    if np.any(pred_mask):
+        ax.semilogy(
+            t_avg[pred_mask],
+            pred[pred_mask],
+            lw=2.0,
+            ls="--",
+            label=f"pred: exp(lambda t), lambda={lambda_est:.4g}",
+        )
+
+    if not (np.any(sep_mask) or np.any(avg_mask) or np.any(pred_mask)):
+        plt.close(fig)
+        return np.nan, np.nan
+
+    ax.set_ylim(plot_min, plot_max)
 
     ax.set_xlabel("time")
     ax.set_ylabel("separation")
@@ -154,6 +181,9 @@ def main():
             continue
         
         lambda_est = float(test_row["lambda"])
+        if not np.isfinite(lambda_est):
+            print(f"Skipping {slug}: lambda is not finite ({lambda_est})")
+            continue
         slope, _ = make_overlay_plot(trace_df, test_row, lambda_est, slug, args.plots_dir)
         fit_rows.append((slug, lambda_est, slope))
         n_written += 1

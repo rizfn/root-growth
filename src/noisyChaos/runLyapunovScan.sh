@@ -9,7 +9,7 @@ TAU=1.0
 DT=0.01
 THETA0=1.5708
 T_WARMUP=500.0
-T_LYAP=200.0
+T_LYAP=2000.0
 RENORM_DT=1.0
 DELTA0=1e-8
 SAVE_TRACE=0
@@ -24,7 +24,7 @@ N_REPS=32
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PYTHON="$SCRIPT_DIR/../../root-env/bin/python"
-EXEC="$SCRIPT_DIR/sdde_lyapunov"
+EXEC="$SCRIPT_DIR/sddeLyapunov"
 
 print_progress() {
     local completed=$1
@@ -41,9 +41,9 @@ if [ "$N_PROCS" -lt 1 ]; then
     N_PROCS=1
 fi
 
-echo "Recompiling sdde_lyapunov..."
+echo "Recompiling sddeLyapunov..."
 g++ -fdiagnostics-color=always -std=c++17 -O2 \
-    -o "$EXEC" "$SCRIPT_DIR/sdde_lyapunov.cpp"
+    -o "$EXEC" "$SCRIPT_DIR/sddeLyapunov.cpp"
 echo "Compilation done."
 
 read -r -a K_VALUES <<< "$($PYTHON -c "
