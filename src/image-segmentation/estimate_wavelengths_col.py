@@ -128,7 +128,7 @@ def estimate_wavelength_first_peak(theta, dx_mm, max_lag=200):
     if len(theta) < 12:
         return np.nan, None, None
 
-    x = signal.detrend(np.unwrap(theta), type="linear")
+    x = np.unwrap(theta)
     ac = compute_autocorr(x, max_lag=max_lag)
     peak_lag = first_positive_peak_lag(ac)
     if peak_lag is None:
@@ -185,7 +185,6 @@ def fit_wavelength_from_autocorr(ac, dx_mm, first_peak_lag=None):
         return np.nan, np.nan, False, np.nan, None
 
     max_lag_mm = float(np.max(x))
-    min_lag_mm = max(dx_mm, 1e-9)
     if first_peak_lag is not None and first_peak_lag > 0:
         lambda0 = first_peak_lag * dx_mm
     else:
@@ -193,7 +192,6 @@ def fit_wavelength_from_autocorr(ac, dx_mm, first_peak_lag=None):
 
     lambda0 = float(np.clip(lambda0, 2.5 * dx_mm, 0.9 * max_lag_mm))
     A0 = float(0.5 * (np.nanmax(y) - np.nanmin(y)))
-    tau0 = max(2 * dx_mm, 0.6 * max_lag_mm)
     phi0 = 0.0
     c0 = float(np.nanmean(y))
 
@@ -424,6 +422,47 @@ def plot_wavelengths(rows, out_png, method="firstpeak"):
     for row in rows:
         grouped[row["image"]].append(row)
 
+    if method == "firstpeak":
+        y_key, err_key = "wavelength_firstpeak_mm", "wavelength_firstpeak_err_mm"
+        marker_style = lambda c, lbl: {
+            "fmt": "o",
+            "color": c,
+            "ecolor": c,
+            "elinewidth": 1.7,
+            "capsize": 4,
+            "markersize": 6,
+            "alpha": 0.9,
+            "zorder": 3,
+            "label": lbl,
+        }
+    else:
+        y_key, err_key = "wavelength_fit_mm", "wavelength_fit_err_mm"
+        marker_style = lambda c, lbl: {
+            "fmt": "o",
+            "markersize": 6,
+            "markerfacecolor": "none",
+            "markeredgecolor": c,
+            "markeredgewidth": 1.3,
+            "ecolor": c,
+            "elinewidth": 1.7,
+            "capsize": 4,
+            "alpha": 0.95,
+            "zorder": 4,
+            "label": lbl,
+        }
+
+    def legend_label(dataset_rows):
+        y = np.array([r[y_key] for r in dataset_rows if np.isfinite(r[y_key])], dtype=float)
+        if y.size == 0:
+            return "n/a"
+        yw = np.array([r[y_key] for r in dataset_rows if np.isfinite(r[y_key]) and np.isfinite(r[err_key]) and r[err_key] > 0], dtype=float)
+        ye = np.array([r[err_key] for r in dataset_rows if np.isfinite(r[y_key]) and np.isfinite(r[err_key]) and r[err_key] > 0], dtype=float)
+        if yw.size > 0:
+            w = 1.0 / (ye ** 2)
+            if np.isfinite(np.sum(w)) and np.sum(w) > 0:
+                return f"{float(np.sum(w * yw) / np.sum(w)):.2f} mm"
+        return f"{float(np.mean(y)):.2f} mm"
+
     fig, ax = plt.subplots(figsize=(max(10, 1.1 * len(image_names)), 6))
 
     legend_done = set()
@@ -431,49 +470,26 @@ def plot_wavelengths(rows, out_png, method="firstpeak"):
         pts = grouped[img]
         n = len(pts)
         jitter = np.array([0.0]) if n == 1 else np.linspace(-0.25, 0.25, n)
+        lbl = legend_label(pts)
 
         for j, row in enumerate(pts):
             x = image_to_x[img] + jitter[j]
             color = image_to_color[img]
-            label = img if img not in legend_done else None
+            label = lbl if img not in legend_done else None
 
-            if method == "firstpeak":
-                y = row["wavelength_firstpeak_mm"]
-                yerr = row["wavelength_firstpeak_err_mm"]
-                ax.errorbar(
-                    x,
-                    y,
-                    yerr=yerr if np.isfinite(yerr) else None,
-                    fmt="o",
-                    color=color,
-                    ecolor=color,
-                    elinewidth=1.7,
-                    capsize=4,
-                    markersize=6,
-                    alpha=0.9,
-                    zorder=3,
-                    label=label,
-                )
-            else:
-                y = row["wavelength_fit_mm"]
-                yerr = row["wavelength_fit_err_mm"]
-                if np.isfinite(y):
-                    ax.errorbar(
-                        x,
-                        y,
-                        yerr=yerr if np.isfinite(yerr) else None,
-                        fmt="o",
-                        markersize=6,
-                        markerfacecolor="none",
-                        markeredgecolor=color,
-                        markeredgewidth=1.3,
-                        ecolor=color,
-                        elinewidth=1.7,
-                        capsize=4,
-                        alpha=0.95,
-                        zorder=4,
-                        label=label,
-                    )
+            y = row[y_key]
+            yerr = row[err_key]
+
+            if method == "fit" and not np.isfinite(y):
+                legend_done.add(img)
+                continue
+
+            ax.errorbar(
+                x,
+                y,
+                yerr=yerr if np.isfinite(yerr) else None,
+                **marker_style(color, label),
+            )
 
             legend_done.add(img)
 
@@ -485,6 +501,20 @@ def plot_wavelengths(rows, out_png, method="firstpeak"):
         ax.set_title("Per-root wavelength estimates from first autocorrelation peak\n(color = image)")
     else:
         ax.set_title("Per-root wavelength estimates from sinusoid fit to autocorrelation\n(color = image)")
+        fit_y = np.array([r["wavelength_fit_mm"] for r in rows if np.isfinite(r["wavelength_fit_mm"])], dtype=float)
+        if fit_y.size > 0:
+            fit_yerr = np.array(
+                [r["wavelength_fit_err_mm"] for r in rows if np.isfinite(r["wavelength_fit_mm"]) and np.isfinite(r["wavelength_fit_err_mm"]) and r["wavelength_fit_err_mm"] > 0],
+                dtype=float,
+            )
+            y_lo, y_hi = float(np.percentile(fit_y, 5)), float(np.percentile(fit_y, 95))
+            if y_hi <= y_lo:
+                center = float(np.median(fit_y))
+                spread = max(float(np.std(fit_y)), 1e-3)
+                y_lo, y_hi = center - spread, center + spread
+            typical_err = float(np.percentile(fit_yerr, 75)) if fit_yerr.size > 0 else 0.0
+            pad = max(0.08 * (y_hi - y_lo), 1e-3)
+            ax.set_ylim(y_lo - typical_err - pad, y_hi + typical_err + pad)
     ax.grid(True, axis="y", alpha=0.25)
 
     if len(image_names) <= 20:
