@@ -206,7 +206,7 @@ def plot_file_threshold_distributions(root_entries, out_png, title, dx_mm):
             values = values[np.isfinite(values)]
             if values.size == 0:
                 continue
-            bandwidth = max(0.6 * dx_mm, 0.08 * span)
+            bandwidth = max(0.2 * dx_mm, 0.04 * span)
             density = smooth_probability_density(values, grid, bandwidth=bandwidth)
             ax.plot(grid, density, color=threshold_to_color[threshold], linewidth=1.7, label=f"thr={threshold:.2f} (n={values.size})")
 
@@ -220,6 +220,56 @@ def plot_file_threshold_distributions(root_entries, out_png, title, dx_mm):
         axes[index // n_cols][index % n_cols].set_axis_off()
 
     fig.suptitle(title, y=1.01)
+
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_aggregate_threshold_distribution(wavelengths_by_threshold, out_png, title):
+    """Plot one aggregate wavelength density curve per threshold across all images and roots."""
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+
+    all_values = []
+    for values in wavelengths_by_threshold.values():
+        all_values.extend(values)
+    all_values = np.asarray(all_values, dtype=float)
+    finite_all = all_values[np.isfinite(all_values)]
+
+    if finite_all.size == 0:
+        fig, ax = plt.subplots(figsize=(9.0, 4.6))
+        ax.text(0.5, 0.5, "No aggregate wavelength candidates above the tested thresholds", ha="center", va="center")
+        ax.set_axis_off()
+        fig.tight_layout()
+        fig.savefig(out_png, dpi=180, bbox_inches="tight")
+        plt.close(fig)
+        return
+
+    x_min = float(np.min(finite_all))
+    x_max = float(np.max(finite_all))
+    span = max(x_max - x_min, 1e-6)
+    pad = max(0.15 * span, 0.3)
+    grid = np.linspace(x_min - pad, x_max + pad, 700)
+
+    fig, ax = plt.subplots(figsize=(9.2, 4.8))
+    thresholds = sorted(float(t) for t in wavelengths_by_threshold.keys())
+    colors = plt.cm.viridis(np.linspace(0.1, 0.9, len(thresholds))) if thresholds else []
+
+    for threshold, color in zip(thresholds, colors):
+        values = np.asarray(wavelengths_by_threshold.get(threshold, []), dtype=float)
+        values = values[np.isfinite(values)]
+        if values.size == 0:
+            continue
+
+        bandwidth = max(0.03 * span, 0.15)
+        density = smooth_probability_density(values, grid, bandwidth=bandwidth)
+        ax.plot(grid, density, color=color, linewidth=2.0, label=f"thr={threshold:.2f} (n={values.size})")
+
+    ax.set_title(title)
+    ax.set_xlabel("Wavelength candidate (mm)")
+    ax.set_ylabel("Probability density")
+    ax.grid(True, alpha=0.28)
+    ax.legend(fontsize=8, framealpha=0.88, loc="best")
 
     fig.tight_layout()
     fig.savefig(out_png, dpi=180, bbox_inches="tight")
@@ -291,10 +341,10 @@ def analyze_image(filepath, dx_pixels=8, min_root_length=200, max_lag=200, thres
             dx_mm=dx_mm,
         )
         print(f"  Saved 1 file-level threshold plot")
-        return [str(out_png)]
+        return [str(out_png)], root_entries
 
     print(f"  No valid roots found for plotting")
-    return []
+    return [], root_entries
 
 
 def parse_args():
@@ -342,8 +392,11 @@ def main():
     print(f"Found {len(files)} images to process\n")
 
     saved_plots = []
+    aggregate_wavelengths_by_threshold = {float(t): [] for t in args.thresholds}
+    total_roots_used = 0
+
     for fp in files:
-        plots = analyze_image(
+        plots, root_entries = analyze_image(
             fp,
             dx_pixels=args.dx_pixels,
             min_root_length=args.min_root_length,
@@ -352,6 +405,27 @@ def main():
             output_dir=args.output_dir,
         )
         saved_plots.extend(plots)
+
+        total_roots_used += len(root_entries)
+        for root_entry in root_entries:
+            for threshold, values in root_entry["wavelengths_by_threshold"].items():
+                aggregate_wavelengths_by_threshold[float(threshold)].extend(values)
+
+    has_aggregate_values = any(len(values) > 0 for values in aggregate_wavelengths_by_threshold.values())
+    if has_aggregate_values:
+        aggregate_out_png = args.output_dir / "all_images_all_roots_threshold_distribution.png"
+        plot_aggregate_threshold_distribution(
+            aggregate_wavelengths_by_threshold,
+            out_png=aggregate_out_png,
+            title=(
+                f"All images | all roots ({total_roots_used} roots) | "
+                f"threshold sweep"
+            ),
+        )
+        saved_plots.append(str(aggregate_out_png))
+        print("Saved aggregate all-images/all-roots threshold plot")
+    else:
+        print("No aggregate wavelength candidates found across all images")
 
     print(f"\nTotal root plots saved: {len(saved_plots)}")
     if saved_plots:
