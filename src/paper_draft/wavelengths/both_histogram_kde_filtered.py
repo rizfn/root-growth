@@ -2,6 +2,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import MaxNLocator, StrMethodFormatter
 
 from errorbars_filter import analyze_image, filter_rows_by_peak_threshold, set_plot_style, style_axes
 
@@ -38,27 +39,15 @@ def gaussian_kernel_pdf(values, errors, x_grid, sigma_floor=1e-3):
     return out / float(values.size)
 
 
-def plot_kernel_distribution(rows, out_png):
-    out_png.parent.mkdir(parents=True, exist_ok=True)
+def plot_kernel_distribution(rows, out_svg):
+    out_svg.parent.mkdir(parents=True, exist_ok=True)
 
     if not rows:
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.text(0.5, 0.5, "No valid wavelength estimates", ha="center", va="center")
-        ax.set_axis_off()
-        fig.tight_layout()
-        fig.savefig(out_png, dpi=160, bbox_inches="tight")
-        plt.close(fig)
-        return
+        print("No valid wavelength estimates to plot.")
 
     vals = np.array([r["wavelength_firstpeak_mm"] for r in rows if np.isfinite(r["wavelength_firstpeak_mm"])], dtype=float)
     if vals.size == 0:
-        fig, ax = plt.subplots(figsize=(8, 4))
-        ax.text(0.5, 0.5, "No valid wavelength estimates", ha="center", va="center")
-        ax.set_axis_off()
-        fig.tight_layout()
-        fig.savefig(out_png, dpi=160, bbox_inches="tight")
-        plt.close(fig)
-        return
+        print("No valid wavelength estimates to plot.")
 
     y_tilted = np.array(
         [r["wavelength_firstpeak_mm"] for r in rows if "AgarTilted" in r["image"] and np.isfinite(r["wavelength_firstpeak_mm"])],
@@ -85,8 +74,8 @@ def plot_kernel_distribution(rows, out_png):
         dtype=float,
     )
 
-    p_lo = float(np.percentile(vals, 2))
-    p_hi = float(np.percentile(vals, 98))
+    p_lo = float(np.min(vals))
+    p_hi = float(np.max(vals))
     if p_hi <= p_lo:
         center = float(np.median(vals))
         spread = max(float(np.std(vals)), 1e-3)
@@ -100,7 +89,7 @@ def plot_kernel_distribution(rows, out_png):
     sigma_floor = max(sigma_floor, 1e-3)
     x_dense = np.linspace(bins[0], bins[-1], 900)
 
-    fig, axes = plt.subplots(2, 1, figsize=(9.4, 7.2), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(7.2, 7.2), sharex=True, constrained_layout=True)
     fig.patch.set_alpha(0.0)
     datasets = [
         ("Tilted", y_tilted, e_tilted, COLOR_TILTED),
@@ -108,19 +97,22 @@ def plot_kernel_distribution(rows, out_png):
     ]
 
     for ax, (title, yy, ee, color) in zip(axes, datasets):
+        ax.text(0.5, 0.93, title, transform=ax.transAxes, ha="center", va="top", color=color)
         if yy.size == 0:
             ax.text(0.5, 0.5, "No valid roots", transform=ax.transAxes, ha="center", va="center")
-            ax.set_title(title)
             ax.set_ylabel("KDE density")
+            ax.yaxis.set_major_formatter(StrMethodFormatter("{x:.2f}"))
             ax_hist = ax.twinx()
             ax_hist.set_ylabel("Count")
+            ax_hist.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True, min_n_ticks=3))
             ax_hist.grid(False)
             style_axes(ax)
             continue
 
         ax_hist = ax.twinx()
-        ax_hist.hist(yy, bins=bins, color=color, alpha=0.28, edgecolor="white", linewidth=0.8)
+        ax_hist.hist(yy, bins=bins, color=color, alpha=0.28, edgecolor="white", linewidth=0.8, rwidth=1)
         ax_hist.set_ylabel("Count")
+        ax_hist.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True, min_n_ticks=3))
         ax_hist.grid(False)
 
         pdf = gaussian_kernel_pdf(
@@ -142,13 +134,13 @@ def plot_kernel_distribution(rows, out_png):
             weighted_mean = float(np.mean(yy))
         ax.axvline(weighted_mean, color=COLOR_REFERENCE, linestyle="--", linewidth=1.0, alpha=0.8)
 
-        ax.set_title(title)
         ax.set_ylabel("KDE density")
+        ax.yaxis.set_major_formatter(StrMethodFormatter("{x:.2f}"))
         style_axes(ax)
 
     axes[-1].set_xlabel("Estimated wavelength (mm)")
 
-    fig.savefig(out_png, format="png", transparent=True, facecolor="none", edgecolor="none")
+    fig.savefig(out_svg, format="svg", transparent=True, facecolor="none", edgecolor="none", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -180,11 +172,11 @@ def main():
 
     filtered_rows = filter_rows_by_peak_threshold(all_rows, peak_threshold=peak_threshold)
 
-    out_png = output_dir / "histogram_kde_tilted_vs_nontilted_filtered.png"
-    plot_kernel_distribution(filtered_rows, out_png)
+    out_svg = output_dir / f"histogram_kde_tilted_vs_nontilted_filtered_ct_{peak_threshold:.2f}.svg"
+    plot_kernel_distribution(filtered_rows, out_svg)
 
     print(f"\nTotal root estimates after peak filter (> {peak_threshold}): {len(filtered_rows)}")
-    print(f"Histogram-kernel distribution saved to {out_png}")
+    print(f"Histogram-kernel distribution saved to {out_svg}")
 
 
 if __name__ == "__main__":

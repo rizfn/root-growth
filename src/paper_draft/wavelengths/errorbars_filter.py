@@ -259,15 +259,15 @@ def analyze_image(filepath, dx_pixels=8, min_root_length=200, max_lag=200):
     return estimates
 
 
-def plot_wavelengths(rows, out_png):
-    out_png.parent.mkdir(parents=True, exist_ok=True)
+def plot_wavelengths(rows, out_svg):
+    out_svg.parent.mkdir(parents=True, exist_ok=True)
 
     if not rows:
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.text(0.5, 0.5, "No valid wavelength estimates", ha="center", va="center")
         ax.set_axis_off()
         fig.tight_layout()
-        fig.savefig(out_png, dpi=160, bbox_inches="tight")
+        fig.savefig(out_svg, dpi=160, bbox_inches="tight")
         plt.close(fig)
         return
 
@@ -295,7 +295,7 @@ def plot_wavelengths(rows, out_png):
         "zorder": 3,
     }
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6), constrained_layout=True)
+    fig, ax = plt.subplots(1, 1, figsize=(8, 7.2), constrained_layout=True)
     fig.patch.set_alpha(0.0)
 
     group_text = {}
@@ -340,12 +340,10 @@ def plot_wavelengths(rows, out_png):
             ew = y_errs[finite_err]
             w = 1.0 / (ew ** 2)
             mean_grp = float(np.sum(w * yw) / np.sum(w))
-            sem_grp = float(np.sqrt(1.0 / np.sum(w)))
         else:
             # Fallback when no finite positive uncertainties are available.
             mean_grp = float(np.mean(y_vals))
-            sem_grp = np.nan
-        group_text[grp] = (n_grp, mean_grp, sem_grp)
+        group_text[grp] = (n_grp, mean_grp)
 
     ax.set_xticks([group_to_x[g] for g in group_order])
     ax.set_xticklabels(group_order)
@@ -356,12 +354,9 @@ def plot_wavelengths(rows, out_png):
     y0, y1 = ax.get_ylim()
     y_text = y1 - 0.06 * (y1 - y0)
     for grp in group_order:
-        n_grp, mean_grp, sem_grp = group_text.get(grp, (0, np.nan, np.nan))
+        n_grp, mean_grp = group_text.get(grp, (0, np.nan))
         if np.isfinite(mean_grp):
-            if np.isfinite(sem_grp):
-                txt = f"n={n_grp}\n$\\mu_{{}}$={mean_grp:.2f} ± {sem_grp:.2f} mm"
-            else:
-                txt = f"n={n_grp}\n$\\mu_{{}}$={mean_grp:.2f} mm"
+            txt = f"$n=${n_grp}\n     $\mu=${mean_grp:.2f} mm"
             ax.text(
                 group_to_x[grp],
                 y_text,
@@ -369,10 +364,11 @@ def plot_wavelengths(rows, out_png):
                 color=group_colors[grp],
                 ha="center",
                 va="top",
-                fontsize=17,
+                fontsize=22,
+                family="monospace",
             )
 
-    fig.savefig(out_png, format="png", transparent=True, facecolor="none", edgecolor="none")
+    fig.savefig(out_svg, format="svg", transparent=True, facecolor="none", edgecolor="none")
     plt.close(fig)
 
 
@@ -418,11 +414,11 @@ def main():
 
     filtered_rows = filter_rows_by_peak_threshold(all_rows, peak_threshold=peak_threshold)
 
-    out_png = output_dir / "wavelength_errorbars_tilted_vs_nontilted_ct0p1.png"
-    plot_wavelengths(filtered_rows, out_png)
+    out_svg = output_dir / f"wavelength_errorbars_tilted_vs_nontilted_ct{peak_threshold:.1f}.svg"
+    plot_wavelengths(filtered_rows, out_svg)
 
     print(f"\nTotal root estimates: {len(filtered_rows)}")
-    print(f"Errorbar plot saved to {out_png}")
+    print(f"Errorbar plot saved to {out_svg}")
 
 
 if __name__ == "__main__":
