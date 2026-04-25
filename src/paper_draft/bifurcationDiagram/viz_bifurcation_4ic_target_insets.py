@@ -206,6 +206,10 @@ def add_inset(
     ax_inset.set_ylabel("")
     style_axes(ax_inset, show_tick_labels=False, facecolor="white", show_grid=False)
 
+    # Remove the black inset frame; keep only the colored outer border.
+    for spine in ax_inset.spines.values():
+        spine.set_visible(False)
+
     # Place a colored border just outside the black frame so they are back-to-back.
     fig = ax_inset.figure
     fig.canvas.draw()
@@ -213,10 +217,9 @@ def add_inset(
     axes_w_px = max(bbox.width, 1.0)
     axes_h_px = max(bbox.height, 1.0)
 
-    # Convert linewidths from points to pixels, then to axis-fraction offsets.
-    inset_frame_px = INSET_FRAME_LW * fig.dpi / 72.0
+    # Convert linewidth from points to pixels, then to axis-fraction offsets.
     outer_border_px = OUTER_BORDER_LW * fig.dpi / 72.0
-    offset_px = 0.5 * (inset_frame_px + outer_border_px)
+    offset_px = 0.5 * outer_border_px
     dx = offset_px / axes_w_px
     dy = offset_px / axes_h_px
 
@@ -265,7 +268,7 @@ def main() -> None:
 
     os.makedirs(PLOT_DIR, exist_ok=True)
     out_png = os.path.join(PLOT_DIR, "bifurcation_4ic_target_with_insets.png")
-    fig.savefig(out_png, format="png", dpi=600, transparent=False, facecolor="none", edgecolor="none")
+    fig.savefig(out_png, format="png", dpi=800, transparent=False, facecolor="none", edgecolor="none")
     plt.close(fig)
 
     print(f"Saved: {out_png}")
