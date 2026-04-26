@@ -290,8 +290,8 @@ def plot_root_timeseries(
     lag_mm = np.arange(len(ac)) * dx_mm
 
     ax_theta.plot(x_mm_display, theta_vals, color=root_color, linewidth=2.0)
-    ax_theta.set_xlabel("Arc length (mm)", labelpad=-20)
-    ax_theta.set_ylabel(r"$\theta$ (rad)", labelpad=-40)
+    ax_theta.set_xlabel(r"Arc length $r$ [mm]", labelpad=-20)
+    ax_theta.set_ylabel(r"$\theta(r)$ [rad]", labelpad=-40)
     style_paper_axis(ax_theta)
     ax_theta.set_xlim(float(x_mm_display.min()), float(x_mm_display.max()))
     ax_theta.set_ylim(float(theta_vals.min()), float(theta_vals.max()))
@@ -316,8 +316,8 @@ def plot_root_timeseries(
             zorder=5,
         )
         ax_ac.axvline(peak_x, color="#666666", linestyle=":", linewidth=1.0, alpha=0.9)
-    ax_ac.set_xlabel("Lag (mm)", labelpad=-20)
-    ax_ac.set_ylabel(r"$C(\ell)$", labelpad=-40)
+    ax_ac.set_xlabel(r"Lag $\Delta r$ [mm]", labelpad=-20)
+    ax_ac.set_ylabel(r"$C(\Delta r)$", labelpad=-40)
     style_paper_axis(ax_ac)
     ax_ac.set_xlim(float(lag_mm.min()), float(lag_mm.max()))
     ax_ac.set_ylim(-1.0, 1.0)

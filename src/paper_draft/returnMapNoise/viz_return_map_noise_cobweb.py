@@ -2,6 +2,7 @@ import math
 import os
 import re
 import sys
+from collections import deque
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ import numpy as np
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUT_DIR = SCRIPT_DIR / "plots"
+OUT_DIR = SCRIPT_DIR / "plots/cobweb"
 
 # Default simulation parameters used to locate the source folder.
 TAU = 1.0
@@ -21,6 +22,9 @@ ITERATE_N = 1
 TRANSIENT_FRAC = 0.5
 MAX_POINTS_PER_ETA = 7000
 SEED = 53
+DBSCAN_EPS = 0.12
+DBSCAN_MIN_SAMPLES = 20
+MAX_CLUSTER_BANDS = 8
 
 DIAG_COLOR = "#666666"
 POINT_COLOR = "#901A1E"
@@ -222,6 +226,76 @@ def style_axes(ax):
         spine.set_linewidth(0.9)
 
 
+def dbscan_labels(x, y, eps, min_samples):
+    n = len(x)
+    if n == 0:
+        return np.array([], dtype=int)
+
+    points = np.column_stack((x, y))
+    eps2 = eps * eps
+
+    neighbors = []
+    for i in range(n):
+        diff = points - points[i]
+        d2 = diff[:, 0] * diff[:, 0] + diff[:, 1] * diff[:, 1]
+        neighbors.append(np.where(d2 <= eps2)[0])
+
+    core = np.array([len(neigh) >= min_samples for neigh in neighbors], dtype=bool)
+
+    UNVISITED = -99
+    NOISE = -1
+    labels = np.full(n, UNVISITED, dtype=int)
+    cluster_id = 0
+
+    for i in range(n):
+        if labels[i] != UNVISITED:
+            continue
+
+        if not core[i]:
+            labels[i] = NOISE
+            continue
+
+        labels[i] = cluster_id
+        queue = deque(neighbors[i].tolist())
+
+        while queue:
+            j = queue.popleft()
+
+            if labels[j] == NOISE:
+                labels[j] = cluster_id
+            if labels[j] != UNVISITED:
+                continue
+
+            labels[j] = cluster_id
+            if core[j]:
+                queue.extend(neighbors[j].tolist())
+
+        cluster_id += 1
+
+    labels[labels == UNVISITED] = NOISE
+    return labels
+
+
+def draw_cloud_cobweb_fill(ax, x_lo, x_hi, y_lo, y_hi, color, alpha):
+    # Vertical bounce set: (x, x) -> (x, y), x in [x_lo, x_hi], y in [y_lo, y_hi].
+    x_grid = np.linspace(x_lo, x_hi, 200)
+    v_lower = np.minimum(x_grid, y_lo)
+    v_upper = np.maximum(x_grid, y_hi)
+    ax.fill_between(x_grid, v_lower, v_upper, color=color, alpha=alpha, linewidth=0, zorder=2)
+
+    # Horizontal bounce set: (x, y) -> (y, y), x in [x_lo, x_hi], y in [y_lo, y_hi].
+    y_grid = np.linspace(y_lo, y_hi, 200)
+    h_left = np.minimum(x_lo, y_grid)
+    h_right = np.maximum(x_hi, y_grid)
+    ax.fill_betweenx(y_grid, h_left, h_right, color=color, alpha=alpha, linewidth=0, zorder=2)
+
+    # Outline cloud extents for readability.
+    ax.plot([x_lo, x_hi], [y_lo, y_lo], color=color, alpha=min(1.0, alpha + 0.25), lw=0.8, zorder=4)
+    ax.plot([x_lo, x_hi], [y_hi, y_hi], color=color, alpha=min(1.0, alpha + 0.25), lw=0.8, zorder=4)
+    ax.plot([x_lo, x_lo], [y_lo, y_hi], color=color, alpha=min(1.0, alpha + 0.25), lw=0.8, zorder=4)
+    ax.plot([x_hi, x_hi], [y_lo, y_hi], color=color, alpha=min(1.0, alpha + 0.25), lw=0.8, zorder=4)
+
+
 def plot_return_maps(tau, k, theta0, dt, tmax, n):
     src = find_source_folder(tau, k, theta0, dt, tmax)
     if src is None:
@@ -266,7 +340,7 @@ def plot_return_maps(tau, k, theta0, dt, tmax, n):
         axes = np.array([axes])
 
     rng = np.random.default_rng(SEED)
-    two_pi = 2.0 * math.pi
+    band_cmap = plt.get_cmap("tab10")
 
     for i, eta in enumerate(eta_values):
         ax = axes[i]
@@ -282,7 +356,35 @@ def plot_return_maps(tau, k, theta0, dt, tmax, n):
             x = x[idx]
             y = y[idx]
 
-        ax.scatter(x, y, s=10, alpha=0.34, color=POINT_COLOR, edgecolors="none")
+        # Keep all points visible, then overlay cobwebs per DBSCAN cluster.
+        ax.scatter(x, y, s=8, alpha=0.20, color=POINT_COLOR, edgecolors="none", zorder=1)
+
+        labels = dbscan_labels(x, y, eps=DBSCAN_EPS, min_samples=DBSCAN_MIN_SAMPLES)
+        cluster_ids = [cid for cid in np.unique(labels) if cid >= 0]
+        cluster_ids.sort(key=lambda cid: np.sum(labels == cid), reverse=True)
+        cluster_ids = cluster_ids[:MAX_CLUSTER_BANDS]
+
+        for cid in cluster_ids:
+            cluster_mask = labels == cid
+            x_cluster = x[cluster_mask]
+            y_cluster = y[cluster_mask]
+            if len(x_cluster) == 0:
+                continue
+
+            x_lo = float(np.min(x_cluster))
+            x_hi = float(np.max(x_cluster))
+            y_lo = float(np.min(y_cluster))
+            y_hi = float(np.max(y_cluster))
+            draw_cloud_cobweb_fill(
+                ax,
+                x_lo,
+                x_hi,
+                y_lo,
+                y_hi,
+                color=band_cmap(cid % 10),
+                alpha=0.22,
+            )
+
         ax.plot(
             [-math.pi, math.pi],
             [-math.pi, math.pi],
@@ -290,6 +392,7 @@ def plot_return_maps(tau, k, theta0, dt, tmax, n):
             lw=1.0,
             color=DIAG_COLOR,
             alpha=0.75,
+            zorder=3,
         )
 
         style_axes(ax)
