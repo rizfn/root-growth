@@ -1,0 +1,28 @@
+{
+  "Tilted": {
+    "n": 9,
+    "mean": 4.481481481481481,
+    "median": 4.0,
+    "mode_result": {
+      "mode": 4.0,
+      "ci_lower": 3.5106377218934384,
+      "ci_upper": 4.744938224216207,
+      "ci_percent": 50.0,
+      "n_bootstrap": 2000
+    },
+    "vg_comparison": null
+  },
+  "Non-tilted": {
+    "n": 35,
+    "mean": 7.019237648110886,
+    "median": 6.333333333333333,
+    "mode_result": {
+      "mode": 5.0,
+      "ci_lower": 4.502925663528651,
+      "ci_upper": 6.101426915712556,
+      "ci_percent": 50.0,
+      "n_bootstrap": 2000
+    },
+    "vg_comparison": null
+  }
+}
