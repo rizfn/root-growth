@@ -25,7 +25,7 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from errorbars_filter import analyze_image, filter_rows_by_peak_threshold, set_plot_style
+from errorbars_filter import analyze_image, filter_rows_by_peak_threshold, set_plot_style, style_axes
 
 
 def _hsm_recursive(sorted_vals):
@@ -194,9 +194,10 @@ def errors_from_rows(rows, key="wavelength_firstpeak_err_mm"):
     return np.asarray(vals, dtype=float)
 
 
-def plot_group_result(group_name, wavelengths, mode_result, out_path, vg_compare=None):
+def plot_group_result(group_name, wavelengths, mode_result, out_path, vg_compare=None, x_limits=None):
     """Plot histogram and bootstrap mode distribution for one group."""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13.5, 5))
+    fig.patch.set_alpha(0.0)
 
     bins = max(6, min(25, len(wavelengths) // 2 if len(wavelengths) > 0 else 6))
     ax1.hist(wavelengths, bins=bins, alpha=0.75, edgecolor="black", color="#5B8DB8")
@@ -219,11 +220,12 @@ def plot_group_result(group_name, wavelengths, mode_result, out_path, vg_compare
             label=f"v_g estimate = {vg_compare['wavelength_from_vg']:.2f} mm",
         )
 
-    ax1.set_title(f"{group_name}: Wavelength Distribution (n={len(wavelengths)})")
-    ax1.set_xlabel("Arc-length wavelength (mm)")
+    ax1.set_title(f"{group_name}: $\Omega$ Distribution (n={len(wavelengths)})")
+    ax1.set_xlabel("Arc-length $\Omega$ (mm)")
     ax1.set_ylabel("Count")
-    ax1.grid(True, alpha=0.3)
-    ax1.legend(fontsize=10)
+    ax1.tick_params(axis="both", labelsize=16)
+    style_axes(ax1)
+    ax1.legend(fontsize=12, loc="upper right")
 
     bs = mode_result["bootstrap_modes"]
     ax2.hist(bs, bins=30, alpha=0.75, edgecolor="black", color="#5B8DB8")
@@ -231,14 +233,27 @@ def plot_group_result(group_name, wavelengths, mode_result, out_path, vg_compare
     ax2.axvline(lo, color="#E38B29", linestyle=":", linewidth=2.0)
     ax2.axvline(hi, color="#E38B29", linestyle=":", linewidth=2.0, label="Empirical interval bounds")
     ax2.set_title(f"{group_name}: Bootstrap Mode Distribution")
-    ax2.set_xlabel("Bootstrap half-sample mode (mm)")
+    ax2.set_xlabel("Bootstrap HSM (mm)")
     ax2.set_ylabel("Count")
-    ax2.grid(True, alpha=0.3)
-    ax2.legend(fontsize=10)
+    ax2.tick_params(axis="both", labelsize=16)
+    style_axes(ax2)
+    ax2.legend(fontsize=12, loc="upper right")
+
+    # Use shared x-axis limits when provided so tilted and non-tilted figures match.
+    if x_limits is None:
+        x_min = min(np.min(wavelengths), np.min(bs))
+        x_max = max(np.max(wavelengths), np.max(bs))
+        margin = 0.05 * (x_max - x_min)
+        x_min -= margin
+        x_max += margin
+    else:
+        x_min, x_max = x_limits
+    ax1.set_xlim(x_min, x_max)
+    ax2.set_xlim(x_min, x_max)
 
     plt.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=160, bbox_inches="tight")
+    fig.savefig(out_path, dpi=160, bbox_inches="tight", transparent=True, facecolor="none", edgecolor="none")
     plt.close(fig)
 
 
@@ -246,6 +261,7 @@ def run_analysis(rows, out_dir, n_bootstrap, ci, vg_tilted=None, vg_nontilted=No
     """Run HSM + bootstrap analysis for tilted/non-tilted groups."""
     groups = split_groups(rows)
     results = {}
+    plot_inputs = {}
 
     for group_name, group_rows in groups.items():
         wl = wavelengths_from_rows(group_rows)
@@ -286,9 +302,11 @@ def run_analysis(rows, out_dir, n_bootstrap, ci, vg_tilted=None, vg_nontilted=No
             if not vg_cmp["within_ci"]:
                 print(f"  distance to interval = {vg_cmp['distance_to_ci']:.3f} mm")
 
-        plot_path = out_dir / f"hsm_bootstrap_{group_name.lower().replace(' ', '_')}.png"
-        plot_group_result(group_name, wl, mode_result, plot_path, vg_compare=vg_cmp)
-        print(f"  saved plot: {plot_path}")
+        plot_inputs[group_name] = {
+            "wavelengths": wl,
+            "mode_result": mode_result,
+            "vg_compare": vg_cmp,
+        }
 
         results[group_name] = {
             "n": int(wl.size),
@@ -304,6 +322,36 @@ def run_analysis(rows, out_dir, n_bootstrap, ci, vg_tilted=None, vg_nontilted=No
             "vg_comparison": vg_cmp,
         }
 
+    all_plot_values = []
+    for item in plot_inputs.values():
+        all_plot_values.append(item["wavelengths"])
+        all_plot_values.append(item["mode_result"]["bootstrap_modes"])
+
+    if all_plot_values:
+        combined = np.concatenate([np.asarray(values, dtype=float) for values in all_plot_values if np.size(values) > 0])
+        if combined.size > 0:
+            x_min = float(np.min(combined))
+            x_max = float(np.max(combined))
+            span = x_max - x_min
+            margin = 0.05 * span if span > 0.0 else 0.5
+            shared_xlim = (x_min - margin, x_max + margin)
+        else:
+            shared_xlim = None
+    else:
+        shared_xlim = None
+
+    for group_name, item in plot_inputs.items():
+        plot_path = out_dir / f"hsm_bootstrap_{group_name.lower().replace(' ', '_')}.svg"
+        plot_group_result(
+            group_name,
+            item["wavelengths"],
+            item["mode_result"],
+            plot_path,
+            vg_compare=item["vg_compare"],
+            x_limits=shared_xlim,
+        )
+        print(f"  saved plot: {plot_path}")
+
     return results
 
 
@@ -314,7 +362,7 @@ def main():
     segmented_input_dir = project_root / "data" / "col_segmented" / "edited"
     out_dir = Path(__file__).resolve().parent / "plots" / "mode_bootstrap"
     n_bootstrap = 2000
-    ci_percent = 50.0
+    ci_percent = 99.0
     vg_tilted = None
     vg_nontilted = None
     use_smoothed_bootstrap = True
@@ -323,7 +371,10 @@ def main():
     dx_pixels = 8
     min_root_length = 200
     max_lag = 200
-    peak_threshold = 0.1
+    peak_threshold = 0.0
+
+    # Always apply paper_draft plotting defaults.
+    set_plot_style()
 
     out_dir.mkdir(parents=True, exist_ok=True)
 

@@ -1,26 +1,26 @@
 {
   "Tilted": {
-    "n": 9,
-    "mean": 4.481481481481481,
+    "n": 10,
+    "mean": 4.366666666666666,
     "median": 4.0,
     "mode_result": {
       "mode": 4.0,
-      "ci_lower": 3.5106377218934384,
-      "ci_upper": 4.744938224216207,
-      "ci_percent": 50.0,
+      "ci_lower": 2.054542991071925,
+      "ci_upper": 6.978356202953698,
+      "ci_percent": 99.0,
       "n_bootstrap": 2000
     },
     "vg_comparison": null
   },
   "Non-tilted": {
-    "n": 35,
-    "mean": 7.019237648110886,
-    "median": 6.333333333333333,
+    "n": 42,
+    "mean": 6.841428198822565,
+    "median": 5.611111111111111,
     "mode_result": {
-      "mode": 5.0,
-      "ci_lower": 4.502925663528651,
-      "ci_upper": 6.101426915712556,
-      "ci_percent": 50.0,
+      "mode": 4.333333333333333,
+      "ci_lower": 2.862346715777829,
+      "ci_upper": 7.513843745319657,
+      "ci_percent": 99.0,
       "n_bootstrap": 2000
     },
     "vg_comparison": null

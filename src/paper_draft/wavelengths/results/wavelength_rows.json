@@ -31,6 +31,16 @@
   },
   {
     "image": "AT_240422_Col_vertical_IMG_0003.png",
+    "root_label": 4,
+    "wavelength_firstpeak_mm": 14.0,
+    "wavelength_firstpeak_err_mm": 0.3333333333333333,
+    "peak_height": 0.09938550329647583,
+    "peak_lag_index": 42,
+    "n_theta_samples": 256,
+    "main_length_mm": 93.84472097616325
+  },
+  {
+    "image": "AT_240422_Col_vertical_IMG_0003.png",
     "root_label": 5,
     "wavelength_firstpeak_mm": 8.666666666666666,
     "wavelength_firstpeak_err_mm": 0.3333333333333333,
@@ -58,6 +68,16 @@
     "peak_lag_index": 10,
     "n_theta_samples": 220,
     "main_length_mm": 81.80990556784315
+  },
+  {
+    "image": "AT_240422_Col_vertical_IMG_0003.png",
+    "root_label": 8,
+    "wavelength_firstpeak_mm": 6.0,
+    "wavelength_firstpeak_err_mm": 0.3333333333333333,
+    "peak_height": 0.06401106400829601,
+    "peak_lag_index": 18,
+    "n_theta_samples": 202,
+    "main_length_mm": 75.93714822905824
   },
   {
     "image": "Col-0_20220630112924-0001_1.0AgarTilted75.png",
@@ -88,6 +108,16 @@
     "peak_lag_index": 12,
     "n_theta_samples": 186,
     "main_length_mm": 70.34564991685434
+  },
+  {
+    "image": "Col-0_20220630112924-0001_1.0AgarTilted75.png",
+    "root_label": 4,
+    "wavelength_firstpeak_mm": 3.333333333333333,
+    "wavelength_firstpeak_err_mm": 0.5556337599011816,
+    "peak_height": 0.04331370838177376,
+    "peak_lag_index": 10,
+    "n_theta_samples": 162,
+    "main_length_mm": 62.603009229735065
   },
   {
     "image": "Col-0_20220630112924-0001_1.0AgarTilted75.png",
@@ -281,6 +311,26 @@
   },
   {
     "image": "R0011536-1.png",
+    "root_label": 4,
+    "wavelength_firstpeak_mm": 4.333333333333333,
+    "wavelength_firstpeak_err_mm": 0.3333333333333333,
+    "peak_height": 0.053675045762941326,
+    "peak_lag_index": 13,
+    "n_theta_samples": 123,
+    "main_length_mm": 49.565232662587235
+  },
+  {
+    "image": "R0011536-1.png",
+    "root_label": 5,
+    "wavelength_firstpeak_mm": 3.6666666666666665,
+    "wavelength_firstpeak_err_mm": 0.3333333333333333,
+    "peak_height": 0.014571426402933872,
+    "peak_lag_index": 11,
+    "n_theta_samples": 123,
+    "main_length_mm": 49.545520659861445
+  },
+  {
+    "image": "R0011536-1.png",
     "root_label": 6,
     "wavelength_firstpeak_mm": 5.0,
     "wavelength_firstpeak_err_mm": 1.073816667887905,
@@ -338,6 +388,16 @@
     "peak_lag_index": 20,
     "n_theta_samples": 117,
     "main_length_mm": 47.64835555284209
+  },
+  {
+    "image": "R0011537.png",
+    "root_label": 1,
+    "wavelength_firstpeak_mm": 5.0,
+    "wavelength_firstpeak_err_mm": 1.2447229024450153,
+    "peak_height": 0.023802437659655534,
+    "peak_lag_index": 15,
+    "n_theta_samples": 105,
+    "main_length_mm": 43.40030060260151
   },
   {
     "image": "R0011537.png",
@@ -411,6 +471,16 @@
   },
   {
     "image": "R0011542.png",
+    "root_label": 1,
+    "wavelength_firstpeak_mm": 4.333333333333333,
+    "wavelength_firstpeak_err_mm": 2.2110492213957817,
+    "peak_height": 0.07977491040465723,
+    "peak_lag_index": 13,
+    "n_theta_samples": 157,
+    "main_length_mm": 60.851782677588275
+  },
+  {
+    "image": "R0011542.png",
     "root_label": 2,
     "wavelength_firstpeak_mm": 3.0,
     "wavelength_firstpeak_err_mm": 0.7021664878605646,
@@ -418,6 +488,16 @@
     "peak_lag_index": 9,
     "n_theta_samples": 160,
     "main_length_mm": 61.93388945877482
+  },
+  {
+    "image": "R0011542.png",
+    "root_label": 3,
+    "wavelength_firstpeak_mm": 4.333333333333333,
+    "wavelength_firstpeak_err_mm": 0.3333333333333333,
+    "peak_height": 0.032359105351743626,
+    "peak_lag_index": 13,
+    "n_theta_samples": 171,
+    "main_length_mm": 65.47014186232019
   },
   {
     "image": "R0011542.png",
