@@ -345,7 +345,7 @@ def main():
     max_lag = 200
     peak_threshold = 0.0
     n_bootstrap = 2000
-    ci_percent = 99.0
+    ci_percent = 95.0
 
     files = sorted(input_dir.glob("*.png"))
     if not files:

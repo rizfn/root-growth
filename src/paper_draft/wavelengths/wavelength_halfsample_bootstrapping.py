@@ -362,7 +362,7 @@ def main():
     segmented_input_dir = project_root / "data" / "col_segmented" / "edited"
     out_dir = Path(__file__).resolve().parent / "plots" / "mode_bootstrap"
     n_bootstrap = 2000
-    ci_percent = 99.0
+    ci_percent = 95.0
     vg_tilted = None
     vg_nontilted = None
     use_smoothed_bootstrap = True

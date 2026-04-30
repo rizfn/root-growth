@@ -27,6 +27,10 @@ TWO_PI = 2.0 * np.pi
 INSET_FRAME_LW = 0.9
 OUTER_BORDER_LW = 1.2
 
+YELLOW_COLOR = "#CBA810"
+ZOOM_BOX_LW = 2.0
+ZOOM_OUTER_BORDER_LW = 2.0
+
 INSET_SPECS = [
     {
         "folder": "lc2",
@@ -40,7 +44,7 @@ INSET_SPECS = [
         "xlim": (4.800, 5.000),
         "ylim": (2.6, 3.1),
         "bounds": [0.08, 0.57, 0.30, 0.35],
-        "color": "#CBA810",
+        "color": YELLOW_COLOR,
     },
 ]
 
@@ -79,7 +83,7 @@ def style_axes(
         spine.set_linewidth(INSET_FRAME_LW)
     ax.minorticks_off()
     ax.grid(show_grid, which="major", alpha=0.3, linewidth=0.7)
-    ax.tick_params(axis="both", which="both", direction="out", top=False, right=False, pad=1, length=0)
+    ax.tick_params(axis="both", which="both", direction="out", top=False, right=False, pad=8, length=0)
     if not show_tick_labels:
         ax.tick_params(
             axis="both",
@@ -163,13 +167,39 @@ def plot_grouped_cloud(ax: plt.Axes, grouped: Dict[str, List[str]], *, add_label
 
 
 def draw_zoom_box(ax: plt.Axes, xlim: Tuple[float, float], ylim: Tuple[float, float], color: str) -> None:
+    # Ensure the inner edge of the stroked rectangle aligns with xlim/ylim.
+    # Use transforms to convert a half-line pixel offset into data units
+    fig = ax.figure
+    fig.canvas.draw()
+    half_line_px = 0.5 * ZOOM_BOX_LW * fig.dpi / 72.0
+
+    # Left inner edge display coord
+    disp_left, _ = ax.transData.transform((xlim[0], 0.0))
+    disp_right, _ = ax.transData.transform((xlim[1], 0.0))
+    # Move the centerline to the right by half the linewidth in display coords
+    disp_left_center = disp_left + half_line_px
+    disp_right_center = disp_right - half_line_px
+    # Convert back to data coords
+    x0 = ax.transData.inverted().transform((disp_left_center, 0.0))[0]
+    x1 = ax.transData.inverted().transform((disp_right_center, 0.0))[0]
+
+    _, disp_bottom = ax.transData.transform((0.0, ylim[0]))
+    _, disp_top = ax.transData.transform((0.0, ylim[1]))
+    disp_bottom_center = disp_bottom + half_line_px
+    disp_top_center = disp_top - half_line_px
+    y0 = ax.transData.inverted().transform((0.0, disp_bottom_center))[1]
+    y1 = ax.transData.inverted().transform((0.0, disp_top_center))[1]
+
+    w = max(x1 - x0, 1e-12)
+    h = max(y1 - y0, 1e-12)
+
     rect = Rectangle(
-        (xlim[0], ylim[0]),
-        xlim[1] - xlim[0],
-        ylim[1] - ylim[0],
+        (x0, y0),
+        w,
+        h,
         fill=False,
         edgecolor=color,
-        linewidth=1.4,
+        linewidth=ZOOM_BOX_LW,
         linestyle="-",
         zorder=4,
     )
@@ -218,7 +248,8 @@ def add_inset(
     axes_h_px = max(bbox.height, 1.0)
 
     # Convert linewidth from points to pixels, then to axis-fraction offsets.
-    outer_border_px = OUTER_BORDER_LW * fig.dpi / 72.0
+    # Use the actual zoom outer linewidth so the inner edge aligns with the inset bounds.
+    outer_border_px = ZOOM_OUTER_BORDER_LW * fig.dpi / 72.0
     offset_px = 0.5 * outer_border_px
     dx = offset_px / axes_w_px
     dy = offset_px / axes_h_px
@@ -230,7 +261,7 @@ def add_inset(
         transform=ax_inset.transAxes,
         fill=False,
         edgecolor=border_color,
-        linewidth=OUTER_BORDER_LW,
+        linewidth=ZOOM_OUTER_BORDER_LW,
         clip_on=False,
         zorder=7,
     )
