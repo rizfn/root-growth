@@ -10,18 +10,18 @@ DT=0.001
 
 # Chaotic LC2 disappearance side (ghost above crisis/saddle-node-like threshold)
 K_IC=4.24
-K_C=4.2404
+K_C=4.240415
 
 T_WARMUP=60000
-T_MAX_TAU=12000
+T_MAX_TAU=240000
 WIN_TAU=6.0
 
 N_SAMPLES=120
-SPACING_TAU=1.0
+SPACING_TAU=0.1
 
 N_DELTA=40
-DELTA_MIN=0.0001
-DELTA_MAX=0.1
+DELTA_MIN=0.00001
+DELTA_MAX=0.01
 
 mkdir -p "$OUT_DIR"
 

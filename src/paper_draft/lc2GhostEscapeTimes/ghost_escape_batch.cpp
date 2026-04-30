@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <iostream>
 #include <numeric>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -84,22 +85,52 @@ double drift(double theta_delay, double k) {
     return -k * std::sin(theta_delay);
 }
 
-std::vector<double> spinupDDE(double tau, double dt, double k, double theta0, double t_warmup) {
+struct DelayHistory {
+    std::vector<double> values;
+    size_t head = 0;
+
+    explicit DelayHistory(size_t n, double initial_value)
+        : values(n, initial_value) {}
+
+    double oldest() const {
+        return values[head];
+    }
+
+    double secondOldest() const {
+        return values[(head + 1) % values.size()];
+    }
+
+    void push(double value) {
+        const size_t write_idx = head;
+        head = (head + 1) % values.size();
+        values[write_idx] = value;
+    }
+
+    std::vector<double> snapshot() const {
+        std::vector<double> out;
+        out.reserve(values.size());
+        for (size_t i = 0; i < values.size(); ++i) {
+            out.push_back(values[(head + i) % values.size()]);
+        }
+        return out;
+    }
+};
+
+DelayHistory spinupDDE(double tau, double dt, double k, double theta0, double t_warmup) {
     const int n_buf = std::max(2, static_cast<int>(std::llround(tau / dt)) + 1);
-    std::vector<double> buf(static_cast<size_t>(n_buf), theta0);
+    DelayHistory history(static_cast<size_t>(n_buf), theta0);
     double theta = theta0;
 
     const int n_steps = std::max(0, static_cast<int>(std::llround(t_warmup / dt)));
     for (int i = 0; i < n_steps; ++i) {
-        const double k1 = drift(buf.front(), k);
-        const double k2 = drift(buf[1], k);
+        const double k1 = drift(history.oldest(), k);
+        const double k2 = drift(history.secondOldest(), k);
         theta += 0.5 * (k1 + k2) * dt;
 
-        std::rotate(buf.begin(), buf.begin() + 1, buf.end());
-        buf.back() = theta;
+        history.push(theta);
     }
 
-    return buf;
+    return history;
 }
 
 std::vector<std::vector<double>> collectICs(
@@ -114,19 +145,47 @@ std::vector<std::vector<double>> collectICs(
     std::vector<std::vector<double>> samples;
     samples.reserve(static_cast<size_t>(n_samples));
 
-    std::vector<double> buf = spinupDDE(tau, dt, k, theta0, t_warmup);
-    double theta = buf.back();
+    DelayHistory history = spinupDDE(tau, dt, k, theta0, t_warmup);
+    double theta = history.values[(history.head + history.values.size() - 1) % history.values.size()];
+
 
     const int spacing_steps = std::max(1, static_cast<int>(std::llround((spacing_tau * tau) / dt)));
 
-    for (int i = 0; i < n_samples; ++i) {
-        samples.push_back(buf);
+    // Collect n_samples valid history buffers. A valid buffer must contain at least one point outside the interval [-pi/2, pi/2].
+    // If a buffer is entirely inside that interval, it is skipped and we advance by `spacing_steps` before trying again.
+    // Add a large safety cap to avoid infinite loops in degenerate cases.
+    const double left_bound = -M_PI;
+    const double right_bound = M_PI;
+    int collected = 0;
+    int attempts = 0;
+    const int max_attempts = std::max(1000, n_samples * 10000);
+
+    while (collected < n_samples) {
+        if (++attempts > max_attempts) {
+            throw std::runtime_error("Failed to collect enough valid IC buffers: increase max_attempts or adjust spacing/warmup parameters");
+        }
+
+        std::vector<double> snap = history.snapshot();
+
+        bool valid = false;
+        for (double v : snap) {
+            if (v < left_bound || v > right_bound) {
+                valid = true;
+                break;
+            }
+        }
+
+        if (valid) {
+            samples.push_back(std::move(snap));
+            ++collected;
+        }
+
+        // Advance the history by spacing_steps regardless of validity.
         for (int s = 0; s < spacing_steps; ++s) {
-            const double k1 = drift(buf.front(), k);
-            const double k2 = drift(buf[1], k);
+            const double k1 = drift(history.oldest(), k);
+            const double k2 = drift(history.secondOldest(), k);
             theta += 0.5 * (k1 + k2) * dt;
-            std::rotate(buf.begin(), buf.begin() + 1, buf.end());
-            buf.back() = theta;
+            history.push(theta);
         }
     }
 
@@ -141,8 +200,10 @@ double escapeTimeTau(
     double win_tau,
     double t_max_tau
 ) {
-    std::vector<double> buf = buf_init;
-    double theta = buf.back();
+    DelayHistory history(buf_init.size(), 0.0);
+    history.values = buf_init;
+    history.head = 0;
+    double theta = history.values.back();
 
     const int win_steps = std::max(1, static_cast<int>(std::llround((win_tau * tau) / dt)));
     const int t_max_steps = std::max(1, static_cast<int>(std::llround((t_max_tau * tau) / dt)));
@@ -150,12 +211,11 @@ double escapeTimeTau(
     std::deque<std::pair<int, double>> maxq;
 
     for (int step = 0; step < t_max_steps; ++step) {
-        const double k1 = drift(buf.front(), k);
-        const double k2 = drift(buf[1], k);
+        const double k1 = drift(history.oldest(), k);
+        const double k2 = drift(history.secondOldest(), k);
         theta += 0.5 * (k1 + k2) * dt;
 
-        std::rotate(buf.begin(), buf.begin() + 1, buf.end());
-        buf.back() = theta;
+        history.push(theta);
 
         while (!maxq.empty() && maxq.back().second <= theta) {
             maxq.pop_back();

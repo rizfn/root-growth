@@ -3,6 +3,7 @@ import os
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -57,7 +58,7 @@ def load_tables(samples_path: str, summary_path: str) -> tuple[pd.DataFrame, pd.
 
     for col in ["delta", "t_esc_tau"]:
         samples[col] = pd.to_numeric(samples[col], errors="coerce")
-    for col in ["delta", "t_mean_escaped", "t_p25_escaped", "t_p75_escaped"]:
+    for col in ["delta", "t_mean_escaped"]:
         summary[col] = pd.to_numeric(summary[col], errors="coerce")
 
     samples = samples.replace([np.inf, -np.inf], np.nan).dropna(subset=["delta", "t_esc_tau"])
@@ -65,7 +66,14 @@ def load_tables(samples_path: str, summary_path: str) -> tuple[pd.DataFrame, pd.
     return samples, summary
 
 
-def add_panel(ax: plt.Axes, samples: pd.DataFrame, summary: pd.DataFrame, title: str, x_label: str, censored_level: float) -> None:
+def add_panel(
+    ax: plt.Axes,
+    samples: pd.DataFrame,
+    summary: pd.DataFrame,
+    x_label: str,
+    censored_level: float,
+    add_fitted_power_law: bool = False,
+) -> None:
     esc = samples[samples["censored"] == 0]
     cen = samples[samples["censored"] == 1]
 
@@ -77,7 +85,7 @@ def add_panel(ax: plt.Axes, samples: pd.DataFrame, summary: pd.DataFrame, title:
             color="#2166AC",
             alpha=0.16,
             linewidths=0,
-            label="individual escaped",
+            label="Simulation data",
             zorder=2,
         )
 
@@ -101,21 +109,8 @@ def add_panel(ax: plt.Axes, samples: pd.DataFrame, summary: pd.DataFrame, title:
             mean_ok["t_mean_escaped"],
             color="#D6604D",
             lw=2.0,
-            label="mean escaped",
+            label="Mean escape time",
             zorder=4,
-        )
-
-    band_ok = summary.dropna(subset=["t_p25_escaped", "t_p75_escaped"]).sort_values("delta")
-    if len(band_ok):
-        ax.fill_between(
-            band_ok["delta"],
-            band_ok["t_p25_escaped"],
-            band_ok["t_p75_escaped"],
-            color="#D6604D",
-            alpha=0.18,
-            linewidth=0,
-            label="IQR escaped",
-            zorder=3,
         )
 
     # Reference slope: T ~ C / sqrt(delta)
@@ -123,37 +118,76 @@ def add_panel(ax: plt.Axes, samples: pd.DataFrame, summary: pd.DataFrame, title:
     fit_df = fit_df[(fit_df["delta"] > 0) & (fit_df["t_mean_escaped"] > 0)]
     if len(fit_df) >= 3:
         x = fit_df["delta"].values
-        y = fit_df["t_mean_escaped"].values
-        log_c = float(np.mean(np.log(y) + 0.5 * np.log(x)))
-        c_ref = np.exp(log_c)
+        # Fixed reference C and slope gamma=1/2
+        C_ref = 10.0
         x_line = np.geomspace(x.min() * 0.8, x.max() * 1.2, 250)
-        y_line = c_ref * np.power(x_line, -0.5)
+        y_line = C_ref * np.power(x_line, -0.5)
         ax.plot(
             x_line,
             y_line,
-            color="#4DAC26",
+            color="#666666",
             lw=1.8,
             ls="--",
-            label=rf"$C\,\Delta^{{-1/2}}$ ref, $C={c_ref:.1f}$",
+            label=r"$\gamma=1/2$ power law",
             zorder=5,
         )
 
-        slope, _ = np.polyfit(np.log(x), np.log(y), 1)
-        ax.annotate(
-            rf"measured slope: ${slope:.2f}$",
-            xy=(0.04, 0.08),
-            xycoords="axes fraction",
-            fontsize=11,
-            color="#2166AC",
-            bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="#2166AC", alpha=0.85),
-        )
+        if add_fitted_power_law:
+            log_x = np.log(x)
+            log_y = np.log(fit_df["t_mean_escaped"].values)
+            slope, _intercept = np.polyfit(log_x, log_y, 1)
+            gamma_fit = float(-slope)
+            y_fit = C_ref * np.power(x_line, -gamma_fit)
+            ax.plot(
+                x_line,
+                y_fit,
+                color="#CBA810",
+                lw=1.8,
+                ls="-.",
+                label=rf"$\gamma={gamma_fit:.2f}$ power law",
+                zorder=6,
+            )
 
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel(x_label)
     ax.set_ylabel(r"$T_{esc}/\tau$")
-    ax.set_title(title)
     style_axes(ax)
+
+
+def add_panel_legend(ax: plt.Axes) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    dark_data_marker = Line2D(
+        [0],
+        [0],
+        marker="o",
+        linestyle="None",
+        markersize=6,
+        markerfacecolor="#2166AC",
+        markeredgecolor="#2166AC",
+        alpha=0.9,
+    )
+    dark_censored_marker = Line2D(
+        [0],
+        [0],
+        marker="v",
+        linestyle="None",
+        markersize=6,
+        markerfacecolor="#2166AC",
+        markeredgecolor="#2166AC",
+        alpha=0.9,
+    )
+
+    remapped_handles: list[object] = []
+    for h, lbl in zip(handles, labels):
+        if lbl == "Simulation data":
+            remapped_handles.append(dark_data_marker)
+        elif lbl == "censored":
+            remapped_handles.append(dark_censored_marker)
+        else:
+            remapped_handles.append(h)
+
+    ax.legend(remapped_handles, labels, loc="upper right", frameon=False)
 
 
 def main() -> None:
@@ -173,8 +207,7 @@ def main() -> None:
         ax1,
         arr_samples,
         arr_summary,
-        title="(a) LC2 onset ghost (arrival side)",
-        x_label=r"$\Delta_{arr}=k_c-k$",
+        x_label=r"$\Delta_{arr}=k_{c,arr}-k$",
         censored_level=0.85 * t_max_arr,
     )
 
@@ -182,31 +215,23 @@ def main() -> None:
         ax2,
         dis_samples,
         dis_summary,
-        title="(b) Chaotic LC2 ghost (disappearance side)",
-        x_label=r"$\Delta_{dis}=k-k_c$",
+        x_label=r"$\Delta_{dis}=k-k_{c,dis}$",
         censored_level=0.85 * t_max_dis,
+        add_fitted_power_law=True,
     )
 
     # Keep panel-specific legends compact and consistent.
-    ax1.legend(loc="upper right", frameon=False)
-    ax2.legend(loc="upper right", frameon=False)
+    add_panel_legend(ax1)
+    add_panel_legend(ax2)
 
-    tau_val = float(arr_samples["tau"].iloc[0]) if len(arr_samples) else 1.0
-    dt_val = float(arr_samples["dt"].iloc[0]) if len(arr_samples) else 0.01
-    fig.suptitle(
-        rf"LC2 ghost escape times ($\tau={tau_val:g}$, $dt={dt_val:g}$, deterministic DDE)",
-        y=1.02,
-        fontsize=22,
-    )
-
-    out_png = os.path.join(PLOT_DIR, "lc2_ghost_escape_times.png")
+    out_svg = os.path.join(PLOT_DIR, "lc2_ghost_escape_times.svg")
     out_pdf = os.path.join(PLOT_DIR, "lc2_ghost_escape_times.pdf")
 
-    fig.savefig(out_png, format="png", transparent=True, facecolor="none", edgecolor="none")
+    fig.savefig(out_svg, format="svg", transparent=True, facecolor="none", edgecolor="none")
     fig.savefig(out_pdf, format="pdf", transparent=True, facecolor="none", edgecolor="none")
     plt.close(fig)
 
-    print(f"Saved: {out_png}")
+    print(f"Saved: {out_svg}")
     print(f"Saved: {out_pdf}")
 
 
