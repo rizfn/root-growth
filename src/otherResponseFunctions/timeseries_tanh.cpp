@@ -60,8 +60,8 @@ void simulate(double k, double theta0, double t_warmup, double t_measure,
 int main(int argc, char *argv[])
 {
     double k         = 2.0;
-    double theta0    = 1.0;
-    double t_warmup  = 2000.0;
+    double theta0    = 0.001;
+    double t_warmup  = 10000.0;
     double t_measure = 3000.0;
     double record_dt = 0.1;
 

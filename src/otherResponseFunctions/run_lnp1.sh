@@ -7,9 +7,9 @@ BIN="$SCRIPT_DIR/timeseries_lnp1"
 g++ -O2 -std=c++17 -march=native -o "$BIN" "$SCRIPT_DIR/timeseries_lnp1.cpp"
 echo "Compiled: $BIN"
 
-T_WARMUP=2000
+T_WARMUP=10000
 T_MEASURE=3000
-THETA0=1.0
+THETA0=0.001
 RECORD_DT=0.1
 NJOBS=8
 

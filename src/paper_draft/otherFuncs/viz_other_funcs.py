@@ -29,8 +29,9 @@ FUNCTIONS = {
 		"func": np.tanh,
 	},
 	"xexpnegx": {
-		"label": r"$\mathrm{sign}(x)\,|x|e^{-|x|}$",
-		"color": "#CBA810",
+		"label": r"$xe^{-|x|}$",
+		# "color": "#CBA810",
+		"color": "#B3950F",
 		"func": lambda x: np.sign(x) * np.abs(x) * np.exp(-np.abs(x)),
 	},
 }
@@ -38,15 +39,15 @@ FUNCTIONS = {
 # Data-coordinate positions for function labels on the first panel.
 # Tweak these values to move each equation label.
 FUNC_LABEL_POSITIONS = {
-	"lnp1": (-2, 1.85),
-	"tanh": (2.5, 0.7),
-	"xexpnegx": (0.1, -0.18),
+	"lnp1": (-4, 1.85),
+	"tanh": (2.2, 0.7),
+	"xexpnegx": (2.2, -0.32),
 }
 
 FUNC_EQUATION_LABELS = {
 	"lnp1": r"$\mathrm{sgn}(x)\,\ln(1+|x|)$",
 	"tanh": r"$\tanh(x)$",
-	"xexpnegx": r"$\mathrm{sgn}(x)\,|x|e^{-|x|}$",
+	"xexpnegx": r"$x\,e^{-|x|}$",
 }
 
 
@@ -139,6 +140,7 @@ def estimate_period(t, y):
 
 
 def last_zero_crossing_before(t, y, t_ref):
+	# Anchor on upward crossings only, so every trace starts with the same phase.
 	if t is None or y is None or len(t) < 2 or len(y) < 2:
 		return None
 	last_cross = None
@@ -147,13 +149,10 @@ def last_zero_crossing_before(t, y, t_ref):
 		y0, y1 = y[i], y[i + 1]
 		if t0 > t_ref:
 			break
-		if y0 == 0.0 and t0 <= t_ref:
+		if y0 == 0.0 and y1 > 0.0 and t0 <= t_ref:
 			last_cross = float(t0)
 			continue
-		if y1 == 0.0 and t1 <= t_ref:
-			last_cross = float(t1)
-			continue
-		if (y0 < 0.0 and y1 > 0.0) or (y0 > 0.0 and y1 < 0.0):
+		if y0 < 0.0 and y1 > 0.0:
 			dy = y1 - y0
 			if dy == 0.0:
 				continue
@@ -297,7 +296,7 @@ def main():
 				y_text,
 				FUNC_EQUATION_LABELS[func_name],
 				color=meta["color"],
-				fontsize=22,
+				fontsize=28,
 				ha="left",
 				va="center",
 			)
