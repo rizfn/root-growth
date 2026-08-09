@@ -28,9 +28,16 @@ C_BLUE = "#547AA5"
 C_GOLD = "#B3950F"
 C_GREY = "#666666"
 
-# noise levels in the C(Delta) panel: a light-to-dark teal ramp, deliberately
-# outside the red/blue/gold family used for the other quantities
-C_ACF = {"0.05": "#5FBDB6", "0.1": "#2E9089", "0.2": "#124A46"}
+# noise levels in the C(Delta) panel: a teal ramp, deliberately outside the
+# red/blue/gold family used for the other quantities.  The span is kept narrow,
+# since the nesting of the envelopes already carries the ordering and a wider
+# ramp only costs legibility at both ends.
+C_ACF = {"0.05": "#55ABA5", "0.1": "#2E8B85", "0.2": "#16605A"}
+# Labels are set in one dark neutral rather than in the curve colours: a ramp
+# that separates three curves well is necessarily too pale at one end and too
+# dark at the other to read as text.  Each label sits on its own envelope, so
+# nothing is lost.  Set to None to colour them by curve instead.
+ACF_LABEL_COLOR = "#1A1A1A"
 
 # ---------------------------------------------------------------------------
 # hand-tuned label placement, in data coordinates -- move these to taste
@@ -187,7 +194,8 @@ def figure_damping():
         ax.plot(lag[m], env, lw=2.6, color=col)
         ax.plot(lag[m], -env, lw=2.6, color=col)
         x_text, y_text = ACF_LABEL_POSITIONS[es]
-        ax.text(x_text, y_text, rf"$\eta={float(es):g}$", color=col,
+        ax.text(x_text, y_text, rf"$\eta={float(es):g}$",
+                color=col if ACF_LABEL_COLOR is None else ACF_LABEL_COLOR,
                 fontsize=27, ha="center", va="center")
     ax.axhline(0.0, color="black", lw=0.7, alpha=0.55)
     ax.set_xlim(0.0, LAG_MAX)
