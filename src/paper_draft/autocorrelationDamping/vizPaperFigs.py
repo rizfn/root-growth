@@ -1,7 +1,8 @@
 """Paper figures for the autocorrelation damping (tau = 1).
 
-fig 1  autocorrelation C(Delta) at three noise levels; the damping rate gamma
-       against eta; and the prefactor c(k) against k, theory vs numerics.
+fig 1  autocorrelation C(Delta) at three noise levels; the phase-diffusion
+       constant D against eta; and the prefactor c(k) against k, theory vs
+       numerics.
 fig 2  the noise-induced escape from the long cycle to the period-4tau cycle at
        k tau = 4: how the apparent threshold depends on the observation time,
        and the activated rate underneath it.
@@ -49,8 +50,8 @@ ACF_LABEL_POSITIONS = {
     "0.1": (154.0, 0.5),
     "0.2": (154.0, 0.0),
 }
-ETA2_LABEL_POSITION = (1e-3, 1e-4)   # "propto eta^2" in the gamma(eta) panel
-# k tau labels in the gamma(eta) panel: colour-coded text instead of a legend,
+ETA2_LABEL_POSITION = (1e-3, 1e-4)   # "propto eta^2" in the D(eta) panel
+# k tau labels in the D(eta) panel: colour-coded text instead of a legend,
 # so nothing in the panel can be mistaken for a data point
 KTAU_LABEL_POSITIONS = {1.8: (2.2e-2, 2.5e-8),
                         2.0: (2.2e-2, 3.0e-9),
@@ -59,6 +60,9 @@ KTAU_LABEL_POSITIONS = {1.8: (2.2e-2, 2.5e-8),
 TOBS_LABEL_POSITIONS = {1e3: (3.1e-2, 0.60),
                         1e4: (3.1e-2, 0.42),
                         1e5: (3.1e-2, 0.24)}
+APPROX_LABEL_POSITIONS = {"num": (2.42, 0.66),     # labels in the closed-form figure
+                          "R1": (2.42, 0.44),
+                          "A3": (2.42, 0.295)}
 ESC_LABEL_POSITION = (5000.0, 4.0e4)   # scaling label, just above the fitted line
 
 # axis-label placement in AXES coordinates: x for y-labels, y for x-labels.
@@ -66,7 +70,7 @@ ESC_LABEL_POSITION = (5000.0, 4.0e4)   # scaling label, just above the fitted li
 # rather than labelpad keeps the placement independent of how wide the tick
 # labels happen to be.
 XLAB_Y = -0.05
-YLAB_X = {"acf": -0.10, "gamma": -0.145, "c": -0.155,
+YLAB_X = {"acf": -0.10, "D": -0.145, "c": -0.155, "cR2": -0.145,
           "frac": -0.105, "lnr": -0.135}
 
 FIG2_FONT_SCALE = 1.0
@@ -159,8 +163,8 @@ def place_labels(ax, ylab_x, xlab_y=None):
     ax.xaxis.set_label_coords(0.5, XLAB_Y if xlab_y is None else xlab_y)
 
 
-def gamma_series(k):
-    """gamma(eta) at one k, from the phase-diffusion coefficient."""
+def diffusion_series(k):
+    """The phase-diffusion constant D(eta) at one k."""
     D_k, D_eta, D = DATA["D_k"], DATA["D_eta"], DATA["D"]
     i = int(np.argmin(np.abs(D_k - k)))
     assert abs(D_k[i] - k) < 1e-9, f"no phase-diffusion data at k={k}"
@@ -207,10 +211,10 @@ def figure_damping():
     label_only(ax, "x", (0.0, LAG_MAX), ("0", f"{LAG_MAX:.0f}"))
     label_only(ax, "y", (-1.0, 1.0), ("-1", "1"))
 
-    # ---- gamma against eta --------------------------------------------------
+    # ---- D against eta ------------------------------------------------------
     ax = fig.add_subplot(gs[0, 1])
     for k, col in K_PANEL:
-        e, g = gamma_series(k)
+        e, g = diffusion_series(k)
         ax.loglog(e, g, "o", ms=8, color=col)
         ax.text(*KTAU_LABEL_POSITIONS[k], rf"$k\tau={k:g}$", color=col,
                 fontsize=28, ha="center", va="center")
@@ -221,9 +225,9 @@ def figure_damping():
     ax.set_xlim(2e-5, 0.4)
     ax.set_ylim(1e-11, 5e-1)
     ax.set_xlabel(r"$\eta$")
-    ax.set_ylabel(r"$\gamma$")
+    ax.set_ylabel(r"$D$")
     finish(ax)
-    place_labels(ax, YLAB_X["gamma"])
+    place_labels(ax, YLAB_X["D"])
     log_ticks(ax, "x", [1e-4, 1e-3, 1e-2, 1e-1], [1e-4, 1e-1])
     log_ticks(ax, "y", [1e-10, 1e-8, 1e-6, 1e-4, 1e-2], [1e-10, 1e-2])
 
@@ -233,6 +237,13 @@ def figure_damping():
     sel = pk <= 3.85
     ax.semilogy(pk[sel], pc[sel], "-", lw=2.6, color="black",
                 label=r"$\frac{1}{2}\langle Z^{2}\rangle$")
+    # the small-orbit closed form, with R from the one-harmonic amplitude
+    # relation k tau = pi R / 4 J1(R); it tracks the data until the cycle stops
+    # being sinusoidal, around k tau = 2.2
+    # ak = DATA["approx_k"]
+    # sela = ak <= 3.85
+    # ax.semilogy(ak[sela], 4 / (np.pi**2 * DATA["approx_R1"][sela]**2),
+    #             ls=(0, (6, 4)), lw=2.2, color=C_GREY, label=r"$4/\pi^{2}R^{2}$")
     sel = DATA["cmeas_k"] <= 3.85
     ax.semilogy(DATA["cmeas_k"][sel], DATA["cmeas"][sel], "o", ms=9, mfc="none",
                 mew=2.2, color=C_GREY, label="numerics")
@@ -243,7 +254,7 @@ def figure_damping():
     ax.set_xlim(1.45, 3.95)
     ax.set_ylim(8e-2, 1.4e1)
     ax.set_xlabel(r"$k\tau$")
-    ax.set_ylabel(r"$c=\gamma/\eta^{2}$")
+    ax.set_ylabel(r"$c=D/\eta^{2}$")
     ax.legend(frameon=False, loc="upper right", handletextpad=0.35,
               borderaxespad=0.2, labelspacing=0.15)
     finish(ax)
@@ -253,6 +264,7 @@ def figure_damping():
 
     save(fig, "autocorr_damping_tau_1")
     plt.close(fig)
+
 
 
 # =============================================================================

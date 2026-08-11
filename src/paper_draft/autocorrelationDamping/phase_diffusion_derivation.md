@@ -193,72 +193,54 @@ Now compute what we actually measure. With $\theta(t)=R\sin(\omega t+\psi(t))$,
 $$C(\Delta)\;=\;\bigl\langle\theta(t)\,\theta(t+\Delta)\bigr\rangle
 \;=\;R^2\bigl\langle \sin(\omega t+\psi)\,\sin(\omega t+\omega\Delta+\psi')\bigr\rangle,$$
 
-with $\psi=\psi(t)$ and $\psi'=\psi(t+\Delta)$. Here $\langle\cdot\rangle$ is an
-average over realisations of the noise, taken after the system has been running
-for a long time $t$; that is what "in the steady state" means. Use
-$\sin A\sin B=\tfrac12[\cos(A-B)-\cos(A+B)]$, which gives two pieces:
+with $\psi=\psi(t)$ and $\psi'=\psi(t+\Delta)$. In practice $C(\Delta)$ is measured
+by sliding a window along a long record: $\langle\cdot\rangle$ is an average over
+the window position $t$, at fixed lag $\Delta$.
 
-$$C(\Delta)=\frac{R^2}{2}\Bigl[\underbrace{\bigl\langle\cos(\omega\Delta+\psi'-\psi)\bigr\rangle}_{\text{difference of phases}}
-\;-\;\underbrace{\bigl\langle\cos(2\omega t+\omega\Delta+\psi+\psi')\bigr\rangle}_{\text{sum of phases}}\Bigr].$$
+Use $\sin A\sin B=\tfrac12[\cos(A-B)-\cos(A+B)]$:
 
-Both are handled by the same tool. If $u$ is Gaussian with mean zero and variance
-$\sigma^2$, then
+$$C(\Delta)=\frac{R^{2}}{2}\Bigl[\bigl\langle\cos(\omega\Delta+\psi'-\psi)\bigr\rangle
+-\bigl\langle\cos(2\omega t+\omega\Delta+\psi+\psi')\bigr\rangle\Bigr].$$
 
-$$\bigl\langle\cos(a+u)\bigr\rangle \;=\; \cos(a)\;e^{-\sigma^{2}/2}. \tag{$\ast$}$$
+Now look at where $t$ appears in each one.
 
-(This is just the real part of $\langle e^{i(a+u)}\rangle=e^{ia}\langle e^{iu}\rangle$
-with $\langle e^{iu}\rangle=e^{-\sigma^2/2}$, the characteristic function of a
-Gaussian.) Both $\psi$ and $\psi'$ are sums of very many independent small kicks,
-so everything in sight is Gaussian. All that remains is to compute the two
-variances — and this is where the two pieces part company.
+**The first term survives.** The only $t$ in it is inside
+$\psi'-\psi=\psi(t+\Delta)-\psi(t)$, the phase drift during the lag. Sliding the
+window does not change how big that drift typically is, so every window position
+contributes the same thing.
 
-**The difference.** Write $\psi'-\psi=\psi(t+\Delta)-\psi(t)$. This is the phase
-accumulated during the lag $\Delta$ only, so by §4
+**The second term averages away.** Here $t$ appears on its own, as $2\omega t$,
+which turns twice as fast as the oscillation. Slide the window forward by half a
+period, $\pi/\omega$: then $2\omega t$ grows by $2\pi$ — one whole turn of the
+cosine — while $\psi$ and $\psi'$ have barely moved. So across that stretch the
+cosine passes through every angle once, and the positive and negative parts
+cancel.
 
-$$\operatorname{Var}\bigl[\psi'-\psi\bigr]\;=\;2D\Delta .$$
+Written out, with the slow parts held at some fixed value $c$ and averaging over
+one period $T=2\pi/\omega$:
 
-It does not depend on $t$: however long the system has been running, the phase
-picked up *during the lag* is the same. Applying $(\ast)$ with $a=\omega\Delta$:
+$$\frac{1}{T}\int_{0}^{T}\!\cos(2\omega t+c)\,dt
+=\frac{1}{T}\left[\frac{\sin(2\omega t+c)}{2\omega}\right]_{0}^{T}
+=\frac{\sin(c+4\pi)-\sin(c)}{2\omega T}=0,$$
 
-$$\bigl\langle\cos(\omega\Delta+\psi'-\psi)\bigr\rangle\;=\;\cos(\omega\Delta)\,e^{-D\Delta}.$$
+because $2\omega T=4\pi$, and $\sin$ repeats every $2\pi$. Every period of the
+record contributes zero in this way, so the whole record does.
 
-**The sum.** Write it so that the two independent parts are separated:
+Holding $\psi$ fixed across one period is safe: it drifts by only a few percent of
+a turn per period at the noise levels used here. And that drift can only help —
+it spreads the angle around further, it cannot undo the cancellation.
 
-$$\psi+\psi' \;=\; 2\psi(t)\;+\;\bigl[\psi(t+\Delta)-\psi(t)\bigr].$$
+What is left is
 
-The first part is the phase accumulated from the start of the run up to $t$; the
-second is what is accumulated afterwards. A random walk has independent
-increments, so these two are independent and their variances simply add:
+$$C(\Delta)=\frac{R^{2}}{2}\bigl\langle\cos\bigl(\omega\Delta+\psi'-\psi\bigr)\bigr\rangle .$$
 
-$$\operatorname{Var}\bigl[\psi+\psi'\bigr]
-\;=\;4\operatorname{Var}\bigl[\psi(t)\bigr]+\operatorname{Var}\bigl[\psi(t+\Delta)-\psi(t)\bigr]
-\;=\;4(2Dt)+2D\Delta\;=\;8Dt+2D\Delta .$$
+The drift $\psi'-\psi$ is a sum of very many independent small kicks, so it is
+Gaussian with mean zero, and by §4 its variance is $2D\Delta$. For any Gaussian
+$u$ with mean zero and variance $\sigma^{2}$,
+$\langle\cos(a+u)\rangle=\cos(a)\,e^{-\sigma^{2}/2}$. Therefore
 
-(The factor $4$ is because $\operatorname{Var}[2X]=4\operatorname{Var}[X]$.)
-Applying $(\ast)$ with $a=2\omega t+\omega\Delta$:
-
-$$\bigl\langle\cos(2\omega t+\omega\Delta+\psi+\psi')\bigr\rangle
-\;=\;\cos(2\omega t+\omega\Delta)\;e^{-4Dt}\;e^{-D\Delta}.$$
-
-**The comparison.** There it is. The difference term carries $e^{-D\Delta}$, which
-depends on the lag and is what we want to measure. The sum term carries the extra
-factor $e^{-4Dt}$, which depends on the *elapsed running time* $t$, not on the
-lag. In the steady state $t\to\infty$, so
-
-$$e^{-4Dt}\;\longrightarrow\;0 ,$$
-
-and the sum term is gone. Not small — zero.
-
-The reason is worth stating plainly: the sum of the two phases still contains the
-absolute phase $\psi(t)$, which random-walks away without bound, so its variance
-grows forever and $(\ast)$ crushes it. The difference of the two phases cancels
-that unbounded common drift exactly, leaving only the finite $2D\Delta$. The
-autocorrelation has a stationary form at all only because of that cancellation.
-
-So
-
-$$\boxed{\;C(\Delta)\;=\;\frac{R^{2}}{2}\,\cos(\omega\Delta)\;e^{-\gamma\Delta},
-\qquad \gamma \;=\; D\;=\;\tfrac12\,\eta^{2}\langle Z^{2}\rangle\;}$$
+$$\boxed{\;C(\Delta)\;=\;\frac{R^{2}}{2}\,\cos(\omega\Delta)\;e^{-D\Delta},
+\qquad D\;=\;\tfrac12\,\eta^{2}\langle Z^{2}\rangle\;}$$
 
 This is the entire content of the first two panels of the figure:
 
@@ -267,7 +249,7 @@ This is the entire content of the first two panels of the figure:
 * its envelope **decays exponentially**, and
 * the decay rate is **exactly** the phase diffusion coefficient.
 
-So the third panel plots $c \equiv \gamma/\eta^{2}=\tfrac12\langle Z^{2}\rangle$:
+So the third panel plots $c \equiv D/\eta^{2}=\tfrac12\langle Z^{2}\rangle$:
 the damping rate stripped of its trivial $\eta^2$ dependence, leaving a number
 that depends only on the shape of the orbit, i.e. only on $k\tau$.
 
@@ -277,13 +259,13 @@ that depends only on the shape of the orbit, i.e. only on $k\tau$.
 
 Two things are worth pausing on, because the original manuscript got both wrong.
 
-**Exponential, not something else.** The decay is $e^{-\gamma\Delta}$ purely
+**Exponential, not something else.** The decay is $e^{-D\Delta}$ purely
 because the variance of the accumulated phase grows *linearly* in $\Delta$, and
 because a Gaussian phase enters $\cos$ through $e^{-\sigma^2/2}$. Linear growth
 of variance is the signature of independent increments — it requires nothing more
 than that the noise is white.
 
-**No threshold.** $\gamma=\tfrac12\langle Z^2\rangle\eta^2$ holds for any $\eta$
+**No threshold.** $D=\tfrac12\langle Z^2\rangle\eta^2$ holds for any $\eta$
 small enough that the orbit is not destroyed. There is no noise level at which
 something switches on. A plateau at small $\eta$ followed by a sudden rise is not
 something this mechanism can produce, and the plateau in the original figure was
@@ -305,7 +287,7 @@ $$Z(\phi)\;\approx\;\frac{4}{\pi R}\cos(\phi+\chi)
 
 so that
 
-$$\boxed{\;c\;=\;\frac{\gamma}{\eta^{2}}\;\approx\;\frac{4}{\pi^{2}R^{2}},
+$$\boxed{\;c\;=\;\frac{D}{\eta^{2}}\;\approx\;\frac{4}{\pi^{2}R^{2}},
 \qquad k\tau=\frac{\pi R}{4J_1(R)}\;}$$
 
 > **Honesty about one step.** The $1/R$ *scaling* of $Z_0$ follows from the
@@ -347,6 +329,24 @@ With the above, the curve in the third panel becomes readable:
   is a real physical statement: oscillations just above onset are very poor
   clocks.
 
+  The divergence has a definite power. Expand the amplitude relation for small
+  $R$ using $J_1(R)\approx R/2-R^3/16$:
+
+  $$k\tau=\frac{\pi R}{4J_1(R)}=\frac{\pi}{2-R^{2}/4}
+  \approx\frac{\pi}{2}\left(1+\frac{R^{2}}{8}\right)
+  \quad\Longrightarrow\quad
+  R^{2}=\frac{16}{\pi}\left(k\tau-\frac{\pi}{2}\right).$$
+
+  Since $c\approx 4/\pi^{2}R^{2}$, this gives
+
+  $$c\;\approx\;\frac{1}{4\pi\,\bigl(k\tau-\pi/2\bigr)},$$
+
+  so the prefactor diverges as a simple inverse power of the distance from the
+  bifurcation. Against the numerically computed $Z$ this is accurate to $1.4\%$ at
+  $k\tau=1.60$ and $5\%$ at $k\tau=1.65$, degrading beyond as the expansion of
+  $R^{2}$ loses accuracy (keeping the exact $R$ instead does much better: the
+  $4/\pi^{2}$ form stays within $2\%$ out to $k\tau=1.8$).
+
 * **It falls like $1/R^{2}$ over $1.6\lesssim k\tau\lesssim2.8$.** The orbit grows,
   and a bigger loop is a better clock.
 
@@ -366,6 +366,6 @@ Noise cannot change the size of the loop for long, but it permanently changes it
 timing; timing errors accumulate as a random walk with diffusion constant
 $D=\tfrac12\eta^2\langle Z^2\rangle$; a diffusing phase turns the autocorrelation
 into $\tfrac{R^2}{2}\cos(\omega\Delta)e^{-D\Delta}$; hence the damping rate is
-$\gamma=\tfrac12\langle Z^2\rangle\,\eta^2$, proportional to $\eta^2$ always, with
+$D=\tfrac12\langle Z^2\rangle\,\eta^2$, proportional to $\eta^2$ always, with
 a prefactor set entirely by the size and shape of the noiseless orbit — which the
 amplitude relation $k\tau=\pi R/4J_1(R)$ delivers from $k\tau$ alone.

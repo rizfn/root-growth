@@ -94,7 +94,7 @@ def main():
             "figure.dpi": 150,
             "savefig.dpi": 300,
             "font.size": 24,
-            "axes.titlesize": 24,
+            "axes.titlesize": 30,
             "axes.labelsize": 30,
             "xtick.labelsize": 20,
             "ytick.labelsize": 20,
@@ -190,6 +190,8 @@ def main():
     ax_b.set_aspect("equal", adjustable="box")
     ax_b.set_xticklabels([])  # hide x tick labels since they are not meaningful here
     ax_b.set_yticklabels([])  # hide y tick labels since they are not meaningful here
+    ax_b.set_xlabel("Lateral position")
+    ax_b.set_ylabel("Depth")
     ax_b.set_title("Root tip trajectory")
     style_main_axes(ax_b)
     ax_b.grid(False)
