@@ -3,9 +3,36 @@ import glob
 import os
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import LinearSegmentedColormap, Normalize
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
+
+
+def set_plot_style() -> None:
+    plt.rcParams.update(
+        {
+            "figure.dpi": 150,
+            "savefig.dpi": 600,
+            "font.size": 24,
+            "axes.titlesize": 24,
+            "axes.labelsize": 32,
+            "xtick.labelsize": 24,
+            "ytick.labelsize": 24,
+            "legend.fontsize": 17,
+            "axes.spines.top": True,
+            "axes.spines.right": True,
+        }
+    )
+
+
+def style_axes(ax: plt.Axes) -> None:
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
+
+
+def save_figure(fig, out_path: str) -> None:
+    base, _ = os.path.splitext(out_path)
+    fig.savefig(f"{base}.pdf", format="pdf")
 
 
 def load_run_summaries(base_dir: str) -> pd.DataFrame:
@@ -69,14 +96,24 @@ def linear_edges(vals: np.ndarray) -> np.ndarray:
     return np.r_[vals[0] - d[0] / 2.0, vals[:-1] + d / 2.0, vals[-1] + d[-1] / 2.0]
 
 
-def _build_zero_center_norm(grid: np.ndarray):
+# White (lambda = 0, periodic) to red (lambda > 0, chaotic), linear.
+# Taken as the upper half of RdBu_r so the saturation ramp matches the old diverging map.
+WHITE_RED = LinearSegmentedColormap.from_list(
+    "white_red", plt.get_cmap("RdBu_r")(np.linspace(0.5, 1.0, 256))
+)
+
+# Above the ~1e-4 sampling floor, well below the chaotic values ~0.5.
+LAMBDA_THRESHOLD = 5e-3
+
+
+def _build_sequential_norm(grid: np.ndarray):
     finite = grid[np.isfinite(grid)]
     if finite.size == 0:
         return None
-    vmax = np.max(np.abs(finite))
+    vmax = float(np.max(finite))
     if vmax <= 0.0:
         return None
-    return TwoSlopeNorm(vcenter=0.0, vmin=-vmax, vmax=vmax)
+    return Normalize(vmin=0.0, vmax=vmax)
 
 
 def plot_lyapunov_value_heatmap(agg_df: pd.DataFrame, out_path: str):
@@ -84,11 +121,11 @@ def plot_lyapunov_value_heatmap(agg_df: pd.DataFrame, out_path: str):
     k_edges = linear_edges(ks)
     eta_edges = log_edges(etas)
 
-    cmap = plt.get_cmap("RdBu_r").copy()
+    cmap = WHITE_RED.copy()
     cmap.set_bad(color="lightgray")
-    norm = _build_zero_center_norm(lambda_grid)
+    norm = _build_sequential_norm(lambda_grid)
 
-    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
     m = ax.pcolormesh(
         k_edges,
         eta_edges,
@@ -96,15 +133,44 @@ def plot_lyapunov_value_heatmap(agg_df: pd.DataFrame, out_path: str):
         cmap=cmap,
         norm=norm,
         shading="auto",
+        rasterized=True,  # no hairline seams between cells in the PDF
     )
-    ax.set_title("Largest Lyapunov Exponent")
-    ax.set_xlabel("k")
-    ax.set_ylabel("eta")
+    ax.set_xlabel(r"$k\,\tau$")
+    ax.set_ylabel(r"$\eta$")
     ax.set_yscale("log")
+    style_axes(ax)
     cb = fig.colorbar(m, ax=ax)
-    cb.set_label("lambda")
+    cb.set_label(r"$\lambda$")
+    cb.ax.tick_params(labelsize=plt.rcParams["ytick.labelsize"])
 
-    fig.savefig(out_path, dpi=200)
+    save_figure(fig, out_path)
+    plt.close(fig)
+
+
+def plot_lyapunov_contour_heatmap(agg_df: pd.DataFrame, out_path: str, threshold: float = LAMBDA_THRESHOLD):
+    """Filled-contour version, with the lambda = threshold line marking the chaotic boundary."""
+    ks, etas, lambda_grid = build_grid(agg_df, "lambda_mean")
+    grid = np.ma.masked_invalid(lambda_grid)
+
+    cmap = WHITE_RED.copy()
+    cmap.set_bad(color="lightgray")
+    norm = _build_sequential_norm(lambda_grid)
+    step = 0.05
+    levels = np.arange(0.0, np.ceil(norm.vmax / step) * step + 0.5 * step, step)
+
+    fig, ax = plt.subplots(figsize=(8, 4.5), constrained_layout=True)
+    m = ax.contourf(ks, etas, grid, levels=levels, cmap=cmap, extend="min")
+    m.set_edgecolor("face")  # hide seams between filled levels in vector output
+    ax.contour(ks, etas, grid, levels=[threshold], colors="black", linewidths=2.5)
+    ax.set_xlabel(r"$k\,\tau$")
+    ax.set_ylabel(r"$\eta$")
+    ax.set_yscale("log")
+    style_axes(ax)
+    cb = fig.colorbar(m, ax=ax)
+    cb.set_label(r"$\lambda$")
+    cb.ax.tick_params(labelsize=plt.rcParams["ytick.labelsize"])
+
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -113,7 +179,7 @@ def plot_lyapunov_sem_heatmap(agg_df: pd.DataFrame, out_path: str):
     k_edges = linear_edges(ks)
     eta_edges = log_edges(etas)
 
-    fig, ax = plt.subplots(figsize=(7, 5), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(7, 4.5), constrained_layout=True)
     m = ax.pcolormesh(
         k_edges,
         eta_edges,
@@ -121,14 +187,15 @@ def plot_lyapunov_sem_heatmap(agg_df: pd.DataFrame, out_path: str):
         cmap="viridis",
         shading="auto",
     )
-    ax.set_title("Lyapunov SEM")
-    ax.set_xlabel("k")
-    ax.set_ylabel("eta")
+    ax.set_xlabel(r"$k\,\tau$")
+    ax.set_ylabel(r"$\eta$")
     ax.set_yscale("log")
+    style_axes(ax)
     cb = fig.colorbar(m, ax=ax)
-    cb.set_label("SEM")
+    cb.set_label(r"SEM$(\lambda)$")
+    cb.ax.tick_params(labelsize=plt.rcParams["ytick.labelsize"])
 
-    fig.savefig(out_path, dpi=200)
+    save_figure(fig, out_path)
     plt.close(fig)
 
 
@@ -155,12 +222,16 @@ def main():
     agg_df.sort_values(["eta", "k"], inplace=True)
     agg_df.to_csv(args.summary_out, sep="\t", index=False)
 
-    values_out = os.path.join(args.plots_dir, "lyapunov_values_heatmap.png")
-    sem_out = os.path.join(args.plots_dir, "lyapunov_sem_heatmap.png")
+    set_plot_style()
+
+    values_out = os.path.join(args.plots_dir, "lyapunov_values_heatmap.pdf")
+    contour_out = os.path.join(args.plots_dir, f"lyapunov_values_heatmap_contour_lc{LAMBDA_THRESHOLD:g}.pdf")
+    sem_out = os.path.join(args.plots_dir, "lyapunov_sem_heatmap.pdf")
     plot_lyapunov_value_heatmap(agg_df, values_out)
+    plot_lyapunov_contour_heatmap(agg_df, contour_out)
     plot_lyapunov_sem_heatmap(agg_df, sem_out)
     print(f"Wrote summary: {args.summary_out}")
-    print(f"Wrote figures: {values_out}, {sem_out}")
+    print(f"Wrote figures: {values_out}, {contour_out}, {sem_out}")
 
 
 if __name__ == "__main__":
