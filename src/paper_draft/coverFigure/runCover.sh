@@ -41,3 +41,10 @@ if [ ! -f "$OUT_DIR/root_crops.npz" ]; then
     "$PYTHON" "$SCRIPT_DIR/extract_roots.py"
 fi
 "$PYTHON" "$SCRIPT_DIR/compose_cover.py" --dpi 300
+
+# The chosen cover (curtain) at 600 dpi, and its four-colour (CMYK) separation
+# for print.  The CMYK profile is Adobe's Coated FOGRA39; pass --profile to
+# export_cmyk.py for another press standard.
+"$PYTHON" "$SCRIPT_DIR/compose_cover.py" --layouts curtain --dpi 600
+"$PYTHON" "$SCRIPT_DIR/export_cmyk.py" --dpi 600 \
+    "$SCRIPT_DIR/plots/with_roots/cover_curtain_tauk_${TAUK}_az_60_el_35_ember_seed_7_8x8in_600dpi.png"

@@ -27,7 +27,7 @@ import os
 import matplotlib.colors as mcolors
 import numpy as np
 from PIL import Image
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import binary_fill_holes, gaussian_filter, label
 
 from viz_cover_attractor import accumulate, add_glow, background, emissive, rotation, save_image, screen
 
@@ -58,15 +58,37 @@ HERO_ALT = 109     # large cotyledons, branching
 # instead of filling them, so those crops are left out altogether.
 CURATED = [8, 9, 15, 18, 37, 100, 103, 106, 109, 111, 133, 145, 196, 211, 212, 214, 222, 224, 248]
 EXCLUDE = set(range(203, 211))
+MAX_PINHOLE = 40           # hole areas in pixels of the original photograph
+MAX_COTYLEDON_HOLE = 3000
+SHOOT_FRAC = 0.12          # top fraction of a seedling crop that holds the shoot
 
 
 # ── seedlings ────────────────────────────────────────────────────────────────
+
+def fill_holes(mask):
+    """Fill enclosed holes: small ones anywhere, cotyledon-sized ones in the shoot."""
+    holes, n = label(binary_fill_holes(mask) & ~mask)
+    if n == 0:
+        return mask
+    sizes = np.bincount(holes.ravel())
+    rows = np.nonzero(holes)[0]
+    lowest = np.zeros(n + 1, dtype=int)
+    np.maximum.at(lowest, holes[holes > 0], rows)
+    shoot_end = SHOOT_FRAC * mask.shape[0]
+    fill = (sizes <= MAX_PINHOLE) | ((sizes <= MAX_COTYLEDON_HOLE) & (lowest < shoot_end))
+    fill[0] = False
+    return mask | fill[holes]
+
 
 def load_seedlings():
     d = np.load(CROPS)
     out = []
     for i in range(len(d["source"])):
-        gray, mask = d[f"gray_{i}"].astype(float), d[f"mask_{i}"].astype(float) / 255.0
+        gray = d[f"gray_{i}"].astype(float)
+        # The segmentation leaves holes that show up as dark specks at high
+        # resolution: hollow cotyledons in the shoot, and pinholes along the
+        # root.  Fill those, but not the loops between root branches.
+        mask = fill_holes(d[f"mask_{i}"] > 0).astype(float)
         h, w = gray.shape
         # Whole seedlings only; very narrow components are plate-edge artefacts.
         if h < 1000 or w < 40 or w > 0.45 * h or i in EXCLUDE:
@@ -85,7 +107,8 @@ def render_seedling(s, height_px, ramp, brightness, blur_px, flip, gamma=0.8):
     size = (max(2, int(round(w * scale))), max(2, int(round(h * scale))))
     value = np.asarray(Image.fromarray((s["value"] * 255).astype(np.uint8)).resize(size, Image.LANCZOS)) / 255.0
     alpha = np.asarray(Image.fromarray((s["mask"] * 255).astype(np.uint8)).resize(size, Image.LANCZOS)) / 255.0
-    alpha = gaussian_filter(alpha, 0.6 + blur_px)
+    # soften the mask edge in proportion to the enlargement, so it stays smooth at any dpi
+    alpha = gaussian_filter(alpha, 0.35 * scale + blur_px)
     value = gaussian_filter(value, blur_px) if blur_px > 0 else value
     if flip:
         value, alpha = value[:, ::-1], alpha[:, ::-1]
